@@ -115,23 +115,72 @@ levels(PVT$Condition)
 levs<-unique(PVT$Participant.Private.ID)
 PVT$ID <- factor(PVT$Participant.Private.ID, levels=levs, labels=seq_along(levs))
 
+PVT$RT = round(PVT$Reaction.Time)
 
+
+#Dataframe from day 1
+PVT1 <- PVT[!(PVT$Day==2),]
+
+#remove rows with all NAs
+# data[complete.cases(data[])]
+
+PVT1 %>% drop_na()
+
+# summarize data per group
 library(dplyr)
-group_by(PVT, Condition, Test, Day) %>%
+sum <- group_by(PVT, Condition, Test, Day) %>%
   summarise(
     count = n(),
     mean = mean(Reaction.Time, na.rm = TRUE),
     sd = sd(Reaction.Time, na.rm = TRUE)
   )
+sum
+
+#visualise outliers:
+summary(PVT1$RT)
+hist(PVT1$RT,
+     xlab = "RT",
+     main = "Histogram of RT",
+     breaks = sqrt(nrow(PVT1))
+)
+
+boxplot.stats(PVT1$RT)$out
+
+lower_bound <- quantile(PVT1$RT, 0.01, na.rm=TRUE)
+lower_bound
+upper_bound <- quantile(PVT1$RT, 0.99, na.rm=TRUE)
+upper_bound
+outlier_ind <- which(PVT1$RT < lower_bound | PVT1$RT > upper_bound)
+outlier_ind
+
+PVT1[!PVT1 %in% boxplot.stats(PVT1$RT)$out]
+
+library(ggplot2)
+ggplot(sum, aes(x=Condition, y=mean)) + 
+  geom_violin()
 
 library("ggpubr")
-ggboxplot(PVT, x = "Condition", y = "", 
-          color = "group", palette = c("#00AFBB", "#E7B800", "#FC4E07"),
-          order = c("ctrl", "trt1", "trt2"),
-          ylab = "Weight", xlab = "Treatment")
+ggboxplot(PVT1, x = "Condition", y = "RT", 
+          color = "Condition", palette = c("#00AFBB", "#E7B800", "#FC4E07"),
+          ylab = "RT", xlab = "Condition")
 
+ggplot(PVT1, aes(x = Condition, 
+                     y = RT, 
+                     color=Test)) +
+  geom_point() +
+  labs(title = "this is the title")
 
-
+#plot reaction times with raincloudplot
+library(reshape2)
+library(cowplot)
+d<-melt(data.frame(RT=c(PVT1$RT))) # we melt to wide format 
+ggplot(d, aes(x = variable, y = value, fill=variable))+
+  geom_flat_violin(position = position_nudge(x = .2, y = 0),adjust =2)+
+  ylab('RT')+xlab('amount')+coord_flip()+theme_cowplot()+
+  geom_point(position=position_jitter(width=.15), size=2)+
+  geom_boxplot(width= .10, outlier.shape = NA)+
+  theme(legend.position="none")+
+  ggtitle("reaction times with outliers")
 
 # calculate mean RT PER PARTICIPANT 
 aggdf <- aggregate (Reaction.Time ~ ID , PVT, mean)
