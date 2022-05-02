@@ -19,6 +19,10 @@ dev.off() # Clear plot window
 
 library(tidyverse)
 
+# Get and declare functions
+setwd(dirname(rstudioapi::getActiveDocumentContext()$path)) #Set WD to script location - Else it can't find functions.R
+source("functions.R") # This is a file in the same directory where you can stash your functions so you can save them there and have them together
+
 #Set your working directory to the folder in which all your CSV files are located
 setwd(dirname(rstudioapi::getActiveDocumentContext()$path))
 
@@ -58,6 +62,8 @@ write.csv(combined_PVT,"combined_PVT.csv",row.names=FALSE)
 PVT <- read.csv(paste0(Dir, "combined_PVT.csv"), header = TRUE, sep = )
 
 
+
+
 # calculate PVT result per participant 
 # The performance score is calculated as 100% minus the number of lapses and false starts relative to the number of valid stimuli and false starts. 
 #It ranges from 100% (optimal performance, no lapses or false starts) to 0% (worst possible performance, only lapses and false starts). 
@@ -65,28 +71,86 @@ PVT <- read.csv(paste0(Dir, "combined_PVT.csv"), header = TRUE, sep = )
 
 
 # make columns: time = 1 or 2, task= PVT1, PVT2, etc
-PVT$Time[PVT$Tree.Node.Key == "task-1lhj"] = 1
-PVT$Time[PVT$Tree.Node.Key == "task-ofgl"] = 1
-PVT$Time[PVT$Tree.Node.Key == "task-3l6b"] = 2
-PVT$Time[PVT$Tree.Node.Key == "task-5too"] = 2
 
-head(PVT$Time)
+PVT$Day[PVT$Tree.Node.Key == "task-1lhj"] = 1 # was taken on day 1
+PVT$Test[PVT$Tree.Node.Key == "task-1lhj"] = 1 # before TloadDback
+PVT$Condition[PVT$Tree.Node.Key == "task-1lhj"] = 'LCL' # Acc= 1
+
+PVT$Day[PVT$Tree.Node.Key == "task-ofgl"] = 1
+PVT$Test[PVT$Tree.Node.Key == "task-ofgl"] = 2
+PVT$Condition[PVT$Tree.Node.Key == "task-ofgl"] = 'LCL'
+
+PVT$Day[PVT$Tree.Node.Key == "task-3l6b"] = 2
+PVT$Test[PVT$Tree.Node.Key == "task-3l6b"] = 1
+PVT$Condition[PVT$Tree.Node.Key == "task-3l6b"] = 'LCL'
+
+PVT$Day[PVT$Tree.Node.Key == "task-6xhv"] = 2
+PVT$Test[PVT$Tree.Node.Key == "task-6xhv"] = 2
+PVT$Condition[PVT$Tree.Node.Key == "task-6xhv"] = 'LCL'
+
+
+PVT$Day[PVT$Tree.Node.Key == "task-jmi7"] = 1
+PVT$Test[PVT$Tree.Node.Key == "task-jmi7"] = 1
+PVT$Condition[PVT$Tree.Node.Key == "task-jmi7"] = 'HCL'
+
+PVT$Day[PVT$Tree.Node.Key == "task-82mr"] = 1
+PVT$Test[PVT$Tree.Node.Key == "task-82mr"] = 2
+PVT$Condition[PVT$Tree.Node.Key == "task-82mr"] = 'HCL'
+
+PVT$Day[PVT$Tree.Node.Key == "task-dt2v"] = 2
+PVT$Test[PVT$Tree.Node.Key == "task-dt2v"] = 1
+PVT$Condition[PVT$Tree.Node.Key == "task-dt2v"] = 'HCL'
+
+PVT$Day[PVT$Tree.Node.Key == "task-5too"] = 2
+PVT$Test[PVT$Tree.Node.Key == "task-5too"] = 2
+PVT$Condition[PVT$Tree.Node.Key == "task-5too"] = 'HCL'
+
+PVT$Day <- factor(PVT$Day)
+PVT$Test <- factor(PVT$Test)
+PVT$Condition <- factor(PVT$Condition)
+
+levels(PVT$Condition)
 
 #create sequential IDs
 levs<-unique(PVT$Participant.Private.ID)
 PVT$ID <- factor(PVT$Participant.Private.ID, levels=levs, labels=seq_along(levs))
 
 
-# calculate mean RT
-aggdf <- aggregate (Reaction.Time ~ Participant.Private.ID, PVT, mean)
-names(aggdf)[2] <- "MeanOfRT"
-PVT <- merge(PVT, aggdf, by="Participant.Private.ID")
+library(dplyr)
+group_by(PVT, Condition, Test, Day) %>%
+  summarise(
+    count = n(),
+    mean = mean(Reaction.Time, na.rm = TRUE),
+    sd = sd(Reaction.Time, na.rm = TRUE)
+  )
+
+library("ggpubr")
+ggboxplot(PVT, x = "Condition", y = "", 
+          color = "group", palette = c("#00AFBB", "#E7B800", "#FC4E07"),
+          order = c("ctrl", "trt1", "trt2"),
+          ylab = "Weight", xlab = "Treatment")
+
+
+
+
+# calculate mean RT PER PARTICIPANT 
+aggdf <- aggregate (Reaction.Time ~ ID , PVT, mean)
+names(aggdf)[2] <- "Mean_RT_Participant"
+PVT <- merge(PVT, aggdf, by="ID")
+
+aggdf <- aggregate (Reaction.Time ~ Time * Condition * ID , PVT, mean)
+names(aggdf)[2] <- "Mean_RT"
+PVT <- merge(PVT, aggdf, by="ID", "Time", "Condition" )
+
+
+aggregate(ID ~ Condition, #Data column group by period
+            data = PVT, 
+            FUN = function(x) length(unique(x)))
+
 
 
 # create new dataframe with only necessary data
 MeanPVT <- data.frame(PVT$Time, PVT$ID, PVT$MeanOfRT)
-
-
 
 
 
@@ -106,7 +170,7 @@ MeanPVT <- data.frame(PVT$Time, PVT$ID, PVT$MeanOfRT)
 # task-onds = Pics_LCL_2
 # task-59ft = Colors_LCL_2
 # task-v1am = Exp_LCL_2
-# task-3l6b = PVT2_LCL_2
+# task-6xhv = PVT2_LCL_2
 # questionnaire-zkqn = VAS2_LCL_2
 
 # questionnaire-p393 = emails
