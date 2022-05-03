@@ -19,104 +19,76 @@ library(tidyverse)
 
 #Set your working directory to the folder in which all your CSV files are located
 setwd(dirname(rstudioapi::getActiveDocumentContext()$path))
-
 Dir = "C:/Users/ASUSTeK/OneDrive/Documenten/Github/Short_TLoadDBack/Data/"
-
 setwd(Dir)
 
 
+##############################
+#                            #
+# PVT (Psychomotor Vigilance Task)       #
+#                            #
+#############################
 
-################  PVT (Psychomotor Vigilance Task) Preprocessing   ###############
-
-## Combining CSVs #
-files <- c("PVT_1_Acc_1_1.csv",
-           "PVT_1_Acc_1_2.csv",
-           "PVT_2_Acc_1_1.csv",
-           "PVT_2_Acc_1_2.csv",
-           
-           "PVT_1_Acc_0.55_1.csv",
-           "PVT_1_Acc_0.55_2.csv",
-           "PVT_2_Acc_0.55_1.csv",
-           "PVT_2_Acc_0.55_2.csv"
+### Combining CSVs #
+files <- c("data_exp_73265-v15_task-1lhj.csv",
+           "data_exp_73265-v15_task-ofgl.csv",
+           "data_exp_73265-v15_task-3l6b.csv",
+           "data_exp_73265-v15_task-6xhv.csv",
+          
+           "data_exp_73265-v15_task-jmi7.csv",
+           "data_exp_73265-v15_task-82mr.csv",
+           "data_exp_73265-v15_task-dt2v.csv",
+           "data_exp_73265-v15_task-5too.csv"
            )
 
 combined_PVT <- lapply(files, read.csv) %>% 
   bind_rows()
 
-# exclude rows that contain END OF FILE 
+# exclude rows that contain END OF FILE and BEGIN TASK
 combined_PVT<-combined_PVT[combined_PVT$ï..Event.Index!="END OF FILE",]
 combined_PVT<-combined_PVT[combined_PVT$Trial.Number!="BEGIN TASK",]
-
-#remove instructions
+# remove instructions
 combined_PVT<-combined_PVT[combined_PVT$display!="instructions",]
 
-
-#export combined data as a CSV. 
+# export combined data as a CSV. 
 write.csv(combined_PVT,"combined_PVT.csv",row.names=FALSE)
+ 
+
+
+### filtering
 
 #re-download
 combined_PVT <- read.csv(paste0(Dir, "combined_PVT.csv"), header = TRUE, sep = )
-
-
-# make columns for conditions: time = 1 or 2, task= PVT1, PVT2, etc
-
-combined_PVT$Day[combined_PVT$Tree.Node.Key == "task-1lhj"] = 1 # was taken on day 1
-combined_PVT$Test[combined_PVT$Tree.Node.Key == "task-1lhj"] = 1 # before TloadDback
-combined_PVT$Condition[combined_PVT$Tree.Node.Key == "task-1lhj"] = 'LCL' # Acc= 1
-
-combined_PVT$Day[combined_PVT$Tree.Node.Key == "task-ofgl"] = 1
-combined_PVT$Test[combined_PVT$Tree.Node.Key == "task-ofgl"] = 2
-combined_PVT$Condition[combined_PVT$Tree.Node.Key == "task-ofgl"] = 'LCL'
-
-combined_PVT$Day[combined_PVT$Tree.Node.Key == "task-3l6b"] = 2
-combined_PVT$Test[combined_PVT$Tree.Node.Key == "task-3l6b"] = 1
-combined_PVT$Condition[combined_PVT$Tree.Node.Key == "task-3l6b"] = 'LCL'
-
-combined_PVT$Day[combined_PVT$Tree.Node.Key == "task-6xhv"] = 2
-combined_PVT$Test[combined_PVT$Tree.Node.Key == "task-6xhv"] = 2
-combined_PVT$Condition[combined_PVT$Tree.Node.Key == "task-6xhv"] = 'LCL'
-
-
-combined_PVT$Day[combined_PVT$Tree.Node.Key == "task-jmi7"] = 1
-combined_PVT$Test[combined_PVT$Tree.Node.Key == "task-jmi7"] = 1
-combined_PVT$Condition[combined_PVT$Tree.Node.Key == "task-jmi7"] = 'HCL'
-
-combined_PVT$Day[combined_PVT$Tree.Node.Key == "task-82mr"] = 1
-combined_PVT$Test[combined_PVT$Tree.Node.Key == "task-82mr"] = 2
-combined_PVT$Condition[combined_PVT$Tree.Node.Key == "task-82mr"] = 'HCL'
-
-combined_PVT$Day[combined_PVT$Tree.Node.Key == "task-dt2v"] = 2
-combined_PVT$Test[combined_PVT$Tree.Node.Key == "task-dt2v"] = 1
-combined_PVT$Condition[combined_PVT$Tree.Node.Key == "task-dt2v"] = 'HCL'
-
-combined_PVT$Day[combined_PVT$Tree.Node.Key == "task-5too"] = 2
-combined_PVT$Test[combined_PVT$Tree.Node.Key == "task-5too"] = 2
-combined_PVT$Condition[combined_PVT$Tree.Node.Key == "task-5too"] = 'HCL'
-
-combined_PVT$Day <- factor(combined_PVT$Day)
-combined_PVT$Test <- factor(combined_PVT$Test)
-combined_PVT$Condition <- factor(combined_PVT$Condition)
-
-levels(combined_PVT$Condition)
 
 #create sequential IDs
 levs<-unique(combined_PVT$Participant.Private.ID)
 combined_PVT$ID <- factor(combined_PVT$Participant.Private.ID, levels=levs, labels=seq_along(levs))
 
 #rename column
-combined_PVT %>% 
-  rename(randomiser.2vg5 = Accuracy_Level)
-
+combined_PVT <- combined_PVT %>% rename(Accuracy_Level = randomiser.2vg5)
 
 #round RT
 combined_PVT$RT = round(combined_PVT$Reaction.Time)
 
-#people that used mobile instead of computer
-combined_PVT$ID[combined_PVT$Participant.Device.Type =="mobile"]
 
+# make columns for conditions: time = 1 or 2, task= PVT1, PVT2, etc
 
-#check Participant.Browser and Participant.OS and Participant.Monitor.size
-unique(combined_PVT$Participant.Browser)
+combined_PVT$Condition[combined_PVT$Accuracy_Level=="Accuracy_level_1"] = 'LCL' # Low Cognitive Load
+combined_PVT$Condition[combined_PVT$Accuracy_Level=="Accuracy_level_0.55"] = 'HCL'
+
+combined_PVT$Test[combined_PVT$Task.Name=="PVT-1"] = 1 # before or after TloadDback
+combined_PVT$Test[combined_PVT$Task.Name=="PVT-2"] = 2
+
+combined_PVT$Day[combined_PVT$Tree.Node.Key == "task-1lhj"] = 1 # was taken on day 1
+combined_PVT$Day[combined_PVT$Tree.Node.Key == "task-ofgl"] = 1
+combined_PVT$Day[combined_PVT$Tree.Node.Key == "task-3l6b"] = 2 # was taken on day 2
+combined_PVT$Day[combined_PVT$Tree.Node.Key == "task-6xhv"] = 2
+
+combined_PVT$Day[combined_PVT$Tree.Node.Key == "task-jmi7"] = 1
+combined_PVT$Day[combined_PVT$Tree.Node.Key == "task-82mr"] = 1
+combined_PVT$Day[combined_PVT$Tree.Node.Key == "task-dt2v"] = 2
+combined_PVT$Day[combined_PVT$Tree.Node.Key == "task-5too"] = 2
+
 
 #Drop unnecessary columns
 PVT = subset(combined_PVT, select = -c(UTC.Timestamp,Local.Timestamp, Local.Timezone, Experiment.ID,Repeat.Key, Schedule.ID, Participant.Public.ID, Participant.Status, Participant.Starting.Group, Participant.Completion.Code,
@@ -128,8 +100,31 @@ PVT = subset(combined_PVT, select = -c(UTC.Timestamp,Local.Timestamp, Local.Time
 write.csv(PVT,"PVT.csv",row.names=FALSE)
 
 
-#TaskName
-#Reaction_Time
+
+
+##############################
+#                            #
+# VAS-f (Visual Analogue Scale for Fatigue)       #
+#                            #
+#############################
+
+### Combining CSVs #
+files <- c("data_exp_73265-v15_questionnaire-krgc.csv",
+           "data_exp_73265-v15_questionnaire-37ue.csv",
+           "data_exp_73265-v15_questionnaire-w32a.csv",
+           "data_exp_73265-v15_questionnaire-zkqn.csv",
+           
+           "data_exp_73265-v15_questionnaire-53zf.csv",
+           "data_exp_73265-v15_questionnaire-mxm5.csv",
+           "data_exp_73265-v15_questionnaire-5mfo.csv",
+           "data_exp_73265-v15_questionnaire-ty7a.csv"
+)
+
+combined_VAS <- lapply(files, read.csv) %>% 
+  bind_rows()
+
+
+
 
 # task-1lhj = PVT1_LCL_1
 # questionnaire-krgc = VAS1_LCL_1
