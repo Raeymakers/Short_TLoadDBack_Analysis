@@ -46,12 +46,27 @@ PVT$ID[PVT$Participant.Device.Type =="mobile"]
 #check Participant.Browser and Participant.OS and Participant.Monitor.size
 unique(combined_PVT$Participant.Browser)
 
+# remove warning, end
+combined_PVT<-combined_PVT[combined_PVT$Screen.Name!="",]
+
+# take only rows where Respones = 'spacebar' ?
+
 #Dataframe from day 1
 PVT1 <- PVT[!(PVT$Day==2),]
 
 #remove rows with all NAs
 # PVT[complete.cases(PVT[])]
 PVT1 %>% drop_na()
+
+
+# make factors
+PVT$Day <- factor(PVT$Day)
+PVT$Test <- factor(PVT$Test)
+PVT$Condition <- factor(PVT$Condition)
+
+levels(combined_PVT$Condition)
+
+
 
 # summarize data per group
 library(dplyr)
