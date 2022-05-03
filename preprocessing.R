@@ -1,4 +1,6 @@
-## next time: make a preprocessing code that renames the excel files according to the nodes
+# Author: Sofie Raeymakers
+# 2022
+
 
 ##https://app.gorilla.sc/support/walkthrough/RStudio#combiningcsvfilesusingr
 
@@ -6,6 +8,13 @@
 ##############################
 #                            #
 # PREPROCESSING DATA TLOADDBACK           #
+#                            #
+#############################
+
+
+##############################
+#                            #
+# PVT (Psychomotor Vigilance Task)       #
 #                            #
 #############################
 
@@ -21,13 +30,6 @@ library(tidyverse)
 setwd(dirname(rstudioapi::getActiveDocumentContext()$path))
 Dir = "C:/Users/ASUSTeK/OneDrive/Documenten/Github/Short_TLoadDBack/Data/"
 setwd(Dir)
-
-
-##############################
-#                            #
-# PVT (Psychomotor Vigilance Task)       #
-#                            #
-#############################
 
 ### Combining CSVs #
 files <- c("data_exp_73265-v15_task-1lhj.csv",
@@ -91,10 +93,13 @@ combined_PVT$Day[combined_PVT$Tree.Node.Key == "task-5too"] = 2
 
 
 #Drop unnecessary columns
-PVT = subset(combined_PVT, select = -c(UTC.Timestamp,Local.Timestamp, Local.Timezone, Experiment.ID,Repeat.Key, Schedule.ID, Participant.Public.ID, Participant.Status, Participant.Starting.Group, Participant.Completion.Code,
-                              Participant.External.Session.ID, Participant.Device, UTC.Date, checkpoint.gn26, display, Dishonest, Participant.Private.ID, Tree.Node.Key,
-                               Checkpoint, checkpoint.yiku, Spreadsheet, Spreadsheet.Name, Zone.Name, Reaction.Onset, Response.Type, ï..Event.Index,
-                              X.Coordinate, Y.Coordinate, randomise_blocks, X, Reaction.Time) )
+PVT = subset(combined_PVT, select = -c(ï..Event.Index, UTC.Timestamp, UTC.Date, Local.Timestamp, Local.Timezone, Experiment.ID,
+                                        Tree.Node.Key, Repeat.Key, Schedule.ID, Participant.Public.ID, Participant.Private.ID,
+                                        Participant.Starting.Group, Participant.Status, Participant.Completion.Code, Participant.External.Session.ID, Participant.Device,
+                                        Checkpoint, checkpoint.yiku, checkpoint.gn26, Spreadsheet, Spreadsheet.Name, Reaction.Onset, Response.Type, Reaction.Time,
+                                        X.Coordinate, Y.Coordinate, randomise_blocks, X, display, Dishonest,) )
+
+  
 
 #export combined data as a CSV. 
 write.csv(PVT,"PVT.csv",row.names=FALSE)
@@ -107,6 +112,19 @@ write.csv(PVT,"PVT.csv",row.names=FALSE)
 # VAS-f (Visual Analogue Scale for Fatigue)       #
 #                            #
 #############################
+
+
+##### Set environment #####
+rm(list = ls()) # Clear environment
+cat("\014") # Clear console
+
+library(tidyverse)
+
+#Set your working directory to the folder in which all your CSV files are located
+setwd(dirname(rstudioapi::getActiveDocumentContext()$path))
+Dir = "C:/Users/ASUSTeK/OneDrive/Documenten/Github/Short_TLoadDBack/Data/"
+setwd(Dir)
+
 
 ### Combining CSVs #
 files <- c("data_exp_73265-v15_questionnaire-krgc.csv",
@@ -123,6 +141,58 @@ files <- c("data_exp_73265-v15_questionnaire-krgc.csv",
 combined_VAS <- lapply(files, read.csv) %>% 
   bind_rows()
 
+# exclude rows that contain END OF FILE and BEGIN TASK
+combined_VAS<-combined_VAS[combined_VAS$ï..Event.Index!="END OF FILE",]
+combined_PVT<-combined_PVT[combined_PVT$Question.Key!="BEGIN QUESTIONNAIRE",]
+
+# export combined data as a CSV. 
+write.csv(combined_VAS,"combined_VAS.csv",row.names=FALSE)
+
+
+### filtering
+
+#re-download
+combined_VAS <- read.csv(paste0(Dir, "combined_VAS.csv"), header = TRUE, sep = )
+
+#create sequential IDs
+levs<-unique(combined_VAS$Participant.Private.ID)
+combined_VAS$ID <- factor(combined_VAS$Participant.Private.ID, levels=levs, labels=seq_along(levs))
+
+#rename column
+combined_VAS <- combined_VAS %>% rename(Accuracy_Level = randomiser.2vg5)
+
+
+
+# make columns for conditions: time = 1 or 2, task= VAS1, VAS2, etc
+
+combined_VAS$Condition[combined_VAS$Accuracy_Level=="Accuracy_level_1"] = 'LCL' # Low Cognitive Load
+combined_VAS$Condition[combined_VAS$Accuracy_Level=="Accuracy_level_0.55"] = 'HCL'
+
+combined_VAS$Test[combined_VAS$Task.Name=="VAS-f-1"] = 1 # before or after TloadDback
+combined_VAS$Test[combined_VAS$Task.Name=="VAS-f-2"] = 2
+
+combined_VAS$Day[combined_VAS$Tree.Node.Key == "questionnaire-krgc"] = 1 # was taken on day 1
+combined_VAS$Day[combined_VAS$Tree.Node.Key == "questionnaire-37ue"] = 1
+combined_VAS$Day[combined_VAS$Tree.Node.Key == "questionnaire-w32a"] = 2 # was taken on day 2
+combined_VAS$Day[combined_VAS$Tree.Node.Key == "questionnaire-zkqn"] = 2
+
+combined_VAS$Day[combined_VAS$Tree.Node.Key == "questionnaire-53zf"] = 1
+combined_VAS$Day[combined_VAS$Tree.Node.Key == "questionnaire-mxm5"] = 1
+combined_VAS$Day[combined_VAS$Tree.Node.Key == "questionnaire-5mfo"] = 2
+combined_VAS$Day[combined_VAS$Tree.Node.Key == "questionnaire-ty7a"] = 2
+
+#check participant status
+combined_VAS[combined_VAS$Participant.Status != "complete"]
+
+
+#Drop unnecessary columns
+VAS = subset(combined_VAS, select = -c(ï..Event.Index, UTC.Timestamp, UTC.Date, Local.Timestamp, Local.Timezone, Experiment.ID, Accuracy_Level,
+                                        Tree.Node.Key, Repeat.Key, Schedule.ID, Participant.Public.ID, Participant.Private.ID,
+                                        Participant.Starting.Group, Participant.Status, Participant.Completion.Code, Participant.External.Session.ID,
+                                        Checkpoint, checkpoint.yiku, checkpoint.gn26, Randomise.questionnaire.elements.) )
+
+#export combined data as a CSV. 
+write.csv(VAS,"VAS.csv",row.names=FALSE)
 
 
 
