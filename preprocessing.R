@@ -97,7 +97,7 @@ combined_PVT$Day[combined_PVT$Tree.Node.Key == "task-5too"] = 2
 
 #Drop unnecessary columns
 PVT = subset(combined_PVT, select = -c(ï..Event.Index, UTC.Timestamp, UTC.Date, Local.Timestamp, Local.Timezone, Experiment.ID, Accuracy_Level, reset,
-                                        Tree.Node.Key, Repeat.Key, Schedule.ID, Participant.Public.ID, Participant.Private.ID, Experiment.Version, Task.Version,
+                                        Tree.Node.Key, Repeat.Key, Schedule.ID, Participant.Private.ID, Experiment.Version, Task.Version,
                                         Participant.Starting.Group, Participant.Status, Participant.Completion.Code, Participant.External.Session.ID, Participant.Device,
                                         Checkpoint, checkpoint.yiku, checkpoint.gn26, Spreadsheet, Spreadsheet.Name, Reaction.Onset, Response.Type, Reaction.Time,
                                         X.Coordinate, Y.Coordinate, randomise_blocks, X, display, Dishonest, Spreadsheet.Row, Screen.Number, Screen.Name, Zone.Name,
@@ -191,7 +191,7 @@ combined_VAS[combined_VAS$Participant.Status != "complete"]
 
 #Drop unnecessary columns
 VAS = subset(combined_VAS, select = -c(ï..Event.Index, UTC.Timestamp, UTC.Date, Local.Timestamp, Local.Timezone, Experiment.ID, Accuracy_Level, Experiment.Version, Task.Version,
-                                        Tree.Node.Key, Repeat.Key, Schedule.ID, Participant.Public.ID, Participant.Private.ID,
+                                        Tree.Node.Key, Repeat.Key, Schedule.ID, Participant.Public.ID,
                                         Participant.Starting.Group, Participant.Status, Participant.Completion.Code, Participant.External.Session.ID,
                                         Checkpoint, checkpoint.yiku, checkpoint.gn26, Randomise.questionnaire.elements.) )
 
