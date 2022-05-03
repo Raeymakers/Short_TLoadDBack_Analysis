@@ -30,6 +30,8 @@ setwd(Dir)
 #Download PVT data (this datafile is made in 'preprocessing')
 PVT <- read.csv(paste0(Dir, "PVT.csv"), header = TRUE, sep = )
 
+#Download VAS-f data
+VAS <- read.csv(paste0(Dir, "VAS.csv"), header = TRUE, sep = )
 ```
 
 ```{r}

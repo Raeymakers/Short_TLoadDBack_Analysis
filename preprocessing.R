@@ -22,7 +22,6 @@
 ##### Set environment #####
 rm(list = ls()) # Clear environment
 cat("\014") # Clear console
-dev.off() # Clear plot window
 
 library(tidyverse)
 
@@ -51,6 +50,9 @@ combined_PVT<-combined_PVT[combined_PVT$ï..Event.Index!="END OF FILE",]
 combined_PVT<-combined_PVT[combined_PVT$Trial.Number!="BEGIN TASK",]
 # remove instructions
 combined_PVT<-combined_PVT[combined_PVT$display!="instructions",]
+
+#Remove: all rows that are not Attempt == 1
+combined_PVT <- combined_PVT[!is.na(combined_PVT$Attempt),]
 
 # export combined data as a CSV. 
 write.csv(combined_PVT,"combined_PVT.csv",row.names=FALSE)
@@ -92,12 +94,14 @@ combined_PVT$Day[combined_PVT$Tree.Node.Key == "task-dt2v"] = 2
 combined_PVT$Day[combined_PVT$Tree.Node.Key == "task-5too"] = 2
 
 
+
 #Drop unnecessary columns
-PVT = subset(combined_PVT, select = -c(ï..Event.Index, UTC.Timestamp, UTC.Date, Local.Timestamp, Local.Timezone, Experiment.ID,
-                                        Tree.Node.Key, Repeat.Key, Schedule.ID, Participant.Public.ID, Participant.Private.ID,
+PVT = subset(combined_PVT, select = -c(ï..Event.Index, UTC.Timestamp, UTC.Date, Local.Timestamp, Local.Timezone, Experiment.ID, Accuracy_Level, reset,
+                                        Tree.Node.Key, Repeat.Key, Schedule.ID, Participant.Public.ID, Participant.Private.ID, Experiment.Version, Task.Version,
                                         Participant.Starting.Group, Participant.Status, Participant.Completion.Code, Participant.External.Session.ID, Participant.Device,
                                         Checkpoint, checkpoint.yiku, checkpoint.gn26, Spreadsheet, Spreadsheet.Name, Reaction.Onset, Response.Type, Reaction.Time,
-                                        X.Coordinate, Y.Coordinate, randomise_blocks, X, display, Dishonest,) )
+                                        X.Coordinate, Y.Coordinate, randomise_blocks, X, display, Dishonest, Spreadsheet.Row, Screen.Number, Screen.Name, Zone.Name,
+                                        Zone.Type, Response, Attempt, Timed.Out, randomise_trials, Incorrect) )
 
   
 
@@ -143,7 +147,7 @@ combined_VAS <- lapply(files, read.csv) %>%
 
 # exclude rows that contain END OF FILE and BEGIN TASK
 combined_VAS<-combined_VAS[combined_VAS$ï..Event.Index!="END OF FILE",]
-combined_PVT<-combined_PVT[combined_PVT$Question.Key!="BEGIN QUESTIONNAIRE",]
+combined_VAS<-combined_VAS[combined_VAS$Question.Key!="BEGIN QUESTIONNAIRE",]
 
 # export combined data as a CSV. 
 write.csv(combined_VAS,"combined_VAS.csv",row.names=FALSE)
@@ -186,7 +190,7 @@ combined_VAS[combined_VAS$Participant.Status != "complete"]
 
 
 #Drop unnecessary columns
-VAS = subset(combined_VAS, select = -c(ï..Event.Index, UTC.Timestamp, UTC.Date, Local.Timestamp, Local.Timezone, Experiment.ID, Accuracy_Level,
+VAS = subset(combined_VAS, select = -c(ï..Event.Index, UTC.Timestamp, UTC.Date, Local.Timestamp, Local.Timezone, Experiment.ID, Accuracy_Level, Experiment.Version, Task.Version,
                                         Tree.Node.Key, Repeat.Key, Schedule.ID, Participant.Public.ID, Participant.Private.ID,
                                         Participant.Starting.Group, Participant.Status, Participant.Completion.Code, Participant.External.Session.ID,
                                         Checkpoint, checkpoint.yiku, checkpoint.gn26, Randomise.questionnaire.elements.) )
