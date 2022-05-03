@@ -1,0 +1,46 @@
+---
+title: "PVT_VAS-f_analysis"
+author: "Sofie Raeymakers"
+date: "5/3/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r message=FALSE, warning = FALSE}
+##### Set environment #####
+rm(list = ls()) # Clear environment
+cat("\014") # Clear console
+dev.off() # Clear plot window
+
+library(tidyverse)
+
+# Get and declare functions
+setwd(dirname(rstudioapi::getActiveDocumentContext()$path)) #Set WD to script location - Else it can't find functions.R
+source("functions.R") # This is a file in the same directory where you can stash your functions so you can save them there and have them together
+
+#Set working directory to the folder in which all CSV files are located
+setwd(dirname(rstudioapi::getActiveDocumentContext()$path))
+
+Dir = "C:/Users/ASUSTeK/OneDrive/Documenten/Github/Short_TLoadDBack/Data/"
+
+setwd(Dir)
+
+```
+
+```{r}
+## Combining CSVs- Questionnaires/Same tasks #
+files <- c("PVT_1_Acc_1_1.csv",
+           "PVT_1_Acc_1_2.csv",
+           "PVT_2_Acc_1_1.csv",
+           "PVT_2_Acc_1_2.csv",
+           
+           "PVT_1_Acc_0.55_1.csv",
+           "PVT_1_Acc_0.55_2.csv",
+           "PVT_2_Acc_0.55_1.csv",
+           "PVT_2_Acc_0.55_2.csv"
+           )
+
+```
