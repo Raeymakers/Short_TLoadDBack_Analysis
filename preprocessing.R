@@ -5,12 +5,10 @@
 
 ##############################
 #                            #
-# PREPROCESSING DAT TLOADDBACK           #
+# PREPROCESSING DATA TLOADDBACK           #
 #                            #
 #############################
-# This code uses premade csv for TRAIT specific variables and perform analysis and data viz
-# Author:  Sofie Raeymakers
-# 2022
+
 
 ##### Set environment #####
 rm(list = ls()) # Clear environment
@@ -19,10 +17,6 @@ dev.off() # Clear plot window
 
 library(tidyverse)
 
-# Get and declare functions
-setwd(dirname(rstudioapi::getActiveDocumentContext()$path)) #Set WD to script location - Else it can't find functions.R
-source("functions.R") # This is a file in the same directory where you can stash your functions so you can save them there and have them together
-
 #Set your working directory to the folder in which all your CSV files are located
 setwd(dirname(rstudioapi::getActiveDocumentContext()$path))
 
@@ -30,9 +24,11 @@ Dir = "C:/Users/ASUSTeK/OneDrive/Documenten/Github/Short_TLoadDBack/Data/"
 
 setwd(Dir)
 
-################# Combining CSVs- Questionnaires/Same tasks #################
-#This is the script to use if you want to combine questionnaires or identical tasks (differing only e.g. on counterbalancing)
-#You list the files you want to combine, each with a "" around them
+
+
+################  PVT (Psychomotor Vigilance Task) Preprocessing   ###############
+
+## Combining CSVs #
 files <- c("PVT_1_Acc_1_1.csv",
            "PVT_1_Acc_1_2.csv",
            "PVT_2_Acc_1_1.csv",
@@ -44,33 +40,20 @@ files <- c("PVT_1_Acc_1_1.csv",
            "PVT_2_Acc_0.55_2.csv"
            )
 
-
-#You can combine the CSVs using either base R or tidyverse (subject to preference)
-#using tidyverse
 combined_PVT <- lapply(files, read.csv) %>% 
   bind_rows()
-#using base R
-combined_PVT<-do.call("rbind",lapply(files,read.csv,header=TRUE,fill=TRUE))
 
-#Your dataset also has some rows that contain "END OF FILE" and nothing else. You can exclude these rows using this line.
+# exclude rows that contain END OF FILE 
 combined_PVT<-combined_PVT[combined_PVT$ï..Event.Index!="END OF FILE",]
 
-#This line exports your combined data as a CSV. This new CSV will be called "combineddata.csv" and will appear in your working directory
+#export combined data as a CSV. 
 write.csv(combined_PVT,"combined_PVT.csv",row.names=FALSE)
 
-
+#re-download
 PVT <- read.csv(paste0(Dir, "combined_PVT.csv"), header = TRUE, sep = )
 
 
-
-
-# calculate PVT result per participant 
-# The performance score is calculated as 100% minus the number of lapses and false starts relative to the number of valid stimuli and false starts. 
-#It ranges from 100% (optimal performance, no lapses or false starts) to 0% (worst possible performance, only lapses and false starts). 
-#https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3197786/
-
-
-# make columns: time = 1 or 2, task= PVT1, PVT2, etc
+# make columns for conditions: time = 1 or 2, task= PVT1, PVT2, etc
 
 PVT$Day[PVT$Tree.Node.Key == "task-1lhj"] = 1 # was taken on day 1
 PVT$Test[PVT$Tree.Node.Key == "task-1lhj"] = 1 # before TloadDback
@@ -115,92 +98,25 @@ levels(PVT$Condition)
 levs<-unique(PVT$Participant.Private.ID)
 PVT$ID <- factor(PVT$Participant.Private.ID, levels=levs, labels=seq_along(levs))
 
+#round RT
 PVT$RT = round(PVT$Reaction.Time)
 
+#check timezone: if Local.Timezone != 1, remove!
 
-#Dataframe from day 1
-PVT1 <- PVT[!(PVT$Day==2),]
+#Check Participant Status
 
-#remove rows with all NAs
-# data[complete.cases(data[])]
+#check that participant.Device.Type == computer
 
-PVT1 %>% drop_na()
+#check Participant.Browser and Participant.OS and Participant.Monitor.size
 
-# summarize data per group
-library(dplyr)
-sum <- group_by(PVT, Condition, Test, Day) %>%
-  summarise(
-    count = n(),
-    mean = mean(Reaction.Time, na.rm = TRUE),
-    sd = sd(Reaction.Time, na.rm = TRUE)
-  )
-sum
+#Drop unnecessary columns
+PVT = subset(PVT, select = -c(UTC.Timestamp,Local.Timestamp,Experiment.ID,Repeat.Key, Schedule.ID, Participant.Public.ID, Participant.Starting.Group, Participant.Completeion.Code,
+                              Participant.External.Session.ID, Participant.Device.Type, Participant.Device, Participant.Browser, Participant.Monitor.Size, 
+                              Participant.OS, Checkpoint, checkpoint.yiku, Spreadsheet, Spreadsheet.Name, Zone.Name, Reaction.Onset, Response.Type,
+                              X.Coordinate, Y.Coordinate, randomise_blocks, X) )
 
-#visualise outliers:
-summary(PVT1$RT)
-hist(PVT1$RT,
-     xlab = "RT",
-     main = "Histogram of RT",
-     breaks = sqrt(nrow(PVT1))
-)
-
-boxplot.stats(PVT1$RT)$out
-
-lower_bound <- quantile(PVT1$RT, 0.01, na.rm=TRUE)
-lower_bound
-upper_bound <- quantile(PVT1$RT, 0.99, na.rm=TRUE)
-upper_bound
-outlier_ind <- which(PVT1$RT < lower_bound | PVT1$RT > upper_bound)
-outlier_ind
-
-PVT1[!PVT1 %in% boxplot.stats(PVT1$RT)$out]
-
-library(ggplot2)
-ggplot(sum, aes(x=Condition, y=mean)) + 
-  geom_violin()
-
-library("ggpubr")
-ggboxplot(PVT1, x = "Condition", y = "RT", 
-          color = "Condition", palette = c("#00AFBB", "#E7B800", "#FC4E07"),
-          ylab = "RT", xlab = "Condition")
-
-ggplot(PVT1, aes(x = Condition, 
-                     y = RT, 
-                     color=Test)) +
-  geom_point() +
-  labs(title = "this is the title")
-
-#plot reaction times with raincloudplot
-library(reshape2)
-library(cowplot)
-d<-melt(data.frame(RT=c(PVT1$RT))) # we melt to wide format 
-ggplot(d, aes(x = variable, y = value, fill=variable))+
-  geom_flat_violin(position = position_nudge(x = .2, y = 0),adjust =2)+
-  ylab('RT')+xlab('amount')+coord_flip()+theme_cowplot()+
-  geom_point(position=position_jitter(width=.15), size=2)+
-  geom_boxplot(width= .10, outlier.shape = NA)+
-  theme(legend.position="none")+
-  ggtitle("reaction times with outliers")
-
-# calculate mean RT PER PARTICIPANT 
-aggdf <- aggregate (Reaction.Time ~ ID , PVT, mean)
-names(aggdf)[2] <- "Mean_RT_Participant"
-PVT <- merge(PVT, aggdf, by="ID")
-
-aggdf <- aggregate (Reaction.Time ~ Time * Condition * ID , PVT, mean)
-names(aggdf)[2] <- "Mean_RT"
-PVT <- merge(PVT, aggdf, by="ID", "Time", "Condition" )
-
-
-aggregate(ID ~ Condition, #Data column group by period
-            data = PVT, 
-            FUN = function(x) length(unique(x)))
-
-
-
-# create new dataframe with only necessary data
-MeanPVT <- data.frame(PVT$Time, PVT$ID, PVT$MeanOfRT)
-
+#export combined data as a CSV. 
+write.csv(PVT,"PVT.csv",row.names=FALSE)
 
 
 #TaskName
