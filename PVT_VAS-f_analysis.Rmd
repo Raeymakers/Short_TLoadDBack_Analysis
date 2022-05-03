@@ -6,14 +6,13 @@ output: html_document
 ---
 
 ```{r setup, include=FALSE}
+rm(list = ls()) # Clear environment
+cat("\014") # Clear console
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
 ```{r message=FALSE, warning = FALSE}
 ##### Set environment #####
-rm(list = ls()) # Clear environment
-cat("\014") # Clear console
-dev.off() # Clear plot window
 
 library(tidyverse)
 
@@ -28,19 +27,106 @@ Dir = "C:/Users/ASUSTeK/OneDrive/Documenten/Github/Short_TLoadDBack/Data/"
 
 setwd(Dir)
 
+#Download PVT data (this datafile is made in 'preprocessing')
+PVT <- read.csv(paste0(Dir, "PVT.csv"), header = TRUE, sep = )
+
 ```
 
 ```{r}
-## Combining CSVs- Questionnaires/Same tasks #
-files <- c("PVT_1_Acc_1_1.csv",
-           "PVT_1_Acc_1_2.csv",
-           "PVT_2_Acc_1_1.csv",
-           "PVT_2_Acc_1_2.csv",
-           
-           "PVT_1_Acc_0.55_1.csv",
-           "PVT_1_Acc_0.55_2.csv",
-           "PVT_2_Acc_0.55_1.csv",
-           "PVT_2_Acc_0.55_2.csv"
-           )
+
+
+# calculate PVT result per participant 
+# The performance score is calculated as 100% minus the number of lapses and false starts relative to the number of valid stimuli and false starts. 
+#It ranges from 100% (optimal performance, no lapses or false starts) to 0% (worst possible performance, only lapses and false starts). 
+#https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3197786/
+
+#people that used mobile
+PVT$ID[PVT$Participant.Device.Type =="mobile"]
+
+#check Participant.Browser and Participant.OS and Participant.Monitor.size
+unique(combined_PVT$Participant.Browser)
+
+#Dataframe from day 1
+PVT1 <- PVT[!(PVT$Day==2),]
+
+#remove rows with all NAs
+# PVT[complete.cases(PVT[])]
+PVT1 %>% drop_na()
+
+# summarize data per group
+library(dplyr)
+sum <- group_by(PVT, Condition, Test, Day) %>%
+  summarise(
+    count = n(),
+    mean = mean(Reaction.Time, na.rm = TRUE),
+    sd = sd(Reaction.Time, na.rm = TRUE)
+  )
+sum
+
+#visualise outliers:
+summary(PVT1$RT)
+hist(PVT1$RT,
+     xlab = "RT",
+     main = "Histogram of RT",
+     breaks = sqrt(nrow(PVT1))
+)
+
+boxplot.stats(PVT1$RT)$out
+
+lower_bound <- quantile(PVT1$RT, 0.01, na.rm=TRUE)
+lower_bound
+upper_bound <- quantile(PVT1$RT, 0.99, na.rm=TRUE)
+upper_bound
+outlier_ind <- which(PVT1$RT < lower_bound | PVT1$RT > upper_bound)
+outlier_ind
+
+PVT1[!PVT1 %in% boxplot.stats(PVT1$RT)$out]
+
+library(ggplot2)
+ggplot(sum, aes(x=Condition, y=mean)) + 
+  geom_violin()
+
+library("ggpubr")
+ggboxplot(PVT1, x = "Condition", y = "RT", 
+          color = "Condition", palette = c("#00AFBB", "#E7B800", "#FC4E07"),
+          ylab = "RT", xlab = "Condition")
+
+ggplot(PVT1, aes(x = Condition, 
+                     y = RT, 
+                     color=Test)) +
+  geom_point() +
+  labs(title = "this is the title")
+
+#plot reaction times with raincloudplot
+library(reshape2)
+library(cowplot)
+d<-melt(data.frame(RT=c(PVT1$RT))) # we melt to wide format 
+ggplot(d, aes(x = variable, y = value, fill=variable))+
+  geom_flat_violin(position = position_nudge(x = .2, y = 0),adjust =2)+
+  ylab('RT')+xlab('amount')+coord_flip()+theme_cowplot()+
+  geom_point(position=position_jitter(width=.15), size=2)+
+  geom_boxplot(width= .10, outlier.shape = NA)+
+  theme(legend.position="none")+
+  ggtitle("reaction times with outliers")
+
+# calculate mean RT PER PARTICIPANT 
+aggdf <- aggregate (Reaction.Time ~ ID , PVT, mean)
+names(aggdf)[2] <- "Mean_RT_Participant"
+PVT <- merge(PVT, aggdf, by="ID")
+
+aggdf <- aggregate (Reaction.Time ~ Time * Condition * ID , PVT, mean)
+names(aggdf)[2] <- "Mean_RT"
+PVT <- merge(PVT, aggdf, by="ID", "Time", "Condition" )
+
+
+aggregate(ID ~ Condition, #Data column group by period
+            data = PVT, 
+            FUN = function(x) length(unique(x)))
+
+
+
+# create new dataframe with only necessary data
+MeanPVT <- data.frame(PVT$Time, PVT$ID, PVT$MeanOfRT)
+
 
 ```
