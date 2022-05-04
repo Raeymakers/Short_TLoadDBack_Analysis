@@ -32,26 +32,28 @@ PVT <- read.csv(paste0(Dir, "PVT.csv"), header = TRUE, sep = )
 
 #Download VAS-f data
 VAS <- read.csv(paste0(Dir, "VAS.csv"), header = TRUE, sep = )
+
+#drop columns
+allPVT <- PVT
+allVAS <- VAS
+PVT = subset(PVT, select = -c(Participant.Device.Type,  Participant.OS, Participant.Browser, Participant.Monitor.Size, Participant.Viewport.Size) )
+VAS = subset(VAS, select = -c(Participant.Device.Type, Participant.Device, Participant.OS, Participant.Browser, Participant.Monitor.Size, Participant.Viewport.Size) )
+
+#VAS has 'quantised: 1-11 instead of 0-10
+
 ```
 
 ```{r}
-
-
 # calculate PVT result per participant 
 # The performance score is calculated as 100% minus the number of lapses and false starts relative to the number of valid stimuli and false starts. 
 #It ranges from 100% (optimal performance, no lapses or false starts) to 0% (worst possible performance, only lapses and false starts). 
 #https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3197786/
 
-#people that used mobile
-PVT$ID[PVT$Participant.Device.Type =="mobile"]
 
 #check Participant.Browser and Participant.OS and Participant.Monitor.size
-unique(combined_PVT$Participant.Browser)
+unique(allPVT$Participant.Browser)
 
-# remove warning, end
-combined_PVT<-combined_PVT[combined_PVT$Screen.Name!="",]
 
-# take only rows where Respones = 'spacebar' ?
 
 #Dataframe from day 1
 PVT1 <- PVT[!(PVT$Day==2),]
@@ -66,7 +68,7 @@ PVT$Day <- factor(PVT$Day)
 PVT$Test <- factor(PVT$Test)
 PVT$Condition <- factor(PVT$Condition)
 
-levels(combined_PVT$Condition)
+levels(PVT$Condition)
 
 
 
@@ -75,8 +77,8 @@ library(dplyr)
 sum <- group_by(PVT, Condition, Test, Day) %>%
   summarise(
     count = n(),
-    mean = mean(Reaction.Time, na.rm = TRUE),
-    sd = sd(Reaction.Time, na.rm = TRUE)
+    mean = mean(RT, na.rm = TRUE),
+    sd = sd(RT, na.rm = TRUE)
   )
 sum
 
@@ -97,10 +99,13 @@ upper_bound
 outlier_ind <- which(PVT1$RT < lower_bound | PVT1$RT > upper_bound)
 outlier_ind
 
+
 PVT1[!PVT1 %in% boxplot.stats(PVT1$RT)$out]
 
 library(ggplot2)
 ggplot(sum, aes(x=Condition, y=mean)) + 
+  geom_violin()
+ggplot(PVT1, aes(x=Condition, y=RT)) + 
   geom_violin()
 
 library("ggpubr")
@@ -127,23 +132,19 @@ ggplot(d, aes(x = variable, y = value, fill=variable))+
   ggtitle("reaction times with outliers")
 
 # calculate mean RT PER PARTICIPANT 
-aggdf <- aggregate (Reaction.Time ~ ID , PVT, mean)
+aggdf <- aggregate (RT ~ ID , PVT, mean)
 names(aggdf)[2] <- "Mean_RT_Participant"
-PVT <- merge(PVT, aggdf, by="ID")
+PVT <- merge(PVT1, aggdf, by="ID")
 
-aggdf <- aggregate (Reaction.Time ~ Time * Condition * ID , PVT, mean)
+aggdf <- aggregate (RT ~ Day * Condition * ID , PVT, mean)
 names(aggdf)[2] <- "Mean_RT"
-PVT <- merge(PVT, aggdf, by="ID", "Time", "Condition" )
 
 
 aggregate(ID ~ Condition, #Data column group by period
-            data = PVT, 
+            data = PVT1, 
             FUN = function(x) length(unique(x)))
 
 
-
-# create new dataframe with only necessary data
-MeanPVT <- data.frame(PVT$Time, PVT$ID, PVT$MeanOfRT)
 
 
 ```

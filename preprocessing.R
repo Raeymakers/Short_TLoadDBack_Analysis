@@ -45,6 +45,9 @@ files <- c("data_exp_73265-v15_task-1lhj.csv",
 combined_PVT <- lapply(files, read.csv) %>% 
   bind_rows()
 
+combined_PVT$ID[combined_PVT$Participant.Device.Type =="mobile"]
+#one participant tried to do on mobile, but quitted when realised doesn't work.
+
 # exclude rows that contain END OF FILE and BEGIN TASK
 combined_PVT<-combined_PVT[combined_PVT$ï..Event.Index!="END OF FILE",]
 combined_PVT<-combined_PVT[combined_PVT$Trial.Number!="BEGIN TASK",]
@@ -72,7 +75,7 @@ combined_PVT$ID <- factor(combined_PVT$Participant.Private.ID, levels=levs, labe
 combined_PVT <- combined_PVT %>% rename(Accuracy_Level = randomiser.2vg5)
 
 #round RT
-combined_PVT$RT = round(combined_PVT$Reaction.Time)
+combined_PVT$RT = round(combined_PVT$Reaction.Time, digits=2)
 
 
 # make columns for conditions: time = 1 or 2, task= PVT1, PVT2, etc
@@ -93,11 +96,9 @@ combined_PVT$Day[combined_PVT$Tree.Node.Key == "task-82mr"] = 1
 combined_PVT$Day[combined_PVT$Tree.Node.Key == "task-dt2v"] = 2
 combined_PVT$Day[combined_PVT$Tree.Node.Key == "task-5too"] = 2
 
-
-
 #Drop unnecessary columns
 PVT = subset(combined_PVT, select = -c(ï..Event.Index, UTC.Timestamp, UTC.Date, Local.Timestamp, Local.Timezone, Experiment.ID, Accuracy_Level, reset,
-                                        Tree.Node.Key, Repeat.Key, Schedule.ID, Participant.Private.ID, Experiment.Version, Task.Version,
+                                        Tree.Node.Key, Repeat.Key, Schedule.ID, Participant.Public.ID, Experiment.Version, Task.Version,
                                         Participant.Starting.Group, Participant.Status, Participant.Completion.Code, Participant.External.Session.ID, Participant.Device,
                                         Checkpoint, checkpoint.yiku, checkpoint.gn26, Spreadsheet, Spreadsheet.Name, Reaction.Onset, Response.Type, Reaction.Time,
                                         X.Coordinate, Y.Coordinate, randomise_blocks, X, display, Dishonest, Spreadsheet.Row, Screen.Number, Screen.Name, Zone.Name,
@@ -148,6 +149,7 @@ combined_VAS <- lapply(files, read.csv) %>%
 # exclude rows that contain END OF FILE and BEGIN TASK
 combined_VAS<-combined_VAS[combined_VAS$ï..Event.Index!="END OF FILE",]
 combined_VAS<-combined_VAS[combined_VAS$Question.Key!="BEGIN QUESTIONNAIRE",]
+combined_VAS<-combined_VAS[combined_VAS$Question.Key!="END QUESTIONNAIRE",]
 
 # export combined data as a CSV. 
 write.csv(combined_VAS,"combined_VAS.csv",row.names=FALSE)
