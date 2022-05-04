@@ -90,11 +90,11 @@ hist(PVT1$RT,
      breaks = sqrt(nrow(PVT1))
 )
 
-boxplot.stats(PVT1$RT)$out
+#boxplot.stats(PVT1$RT)$out
 
-lower_bound <- quantile(PVT1$RT, 0.01, na.rm=TRUE)
+lower_bound <- quantile(PVT1$RT, 0.025, na.rm=TRUE)
 lower_bound
-upper_bound <- quantile(PVT1$RT, 0.99, na.rm=TRUE)
+upper_bound <- quantile(PVT1$RT, 0.975, na.rm=TRUE)
 upper_bound
 outlier_ind <- which(PVT1$RT < lower_bound | PVT1$RT > upper_bound)
 outlier_ind
