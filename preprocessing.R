@@ -230,11 +230,6 @@ files <- c("data_exp_73265-v15_task-2i7q.csv",
 combined <- lapply(files, read.csv) %>% 
   bind_rows()
 
-# # exclude rows that contain END OF FILE and BEGIN TASK
-# combined_VAS<-combined_VAS[combined_VAS$ï..Event.Index!="END OF FILE",]
-# combined_VAS<-combined_VAS[combined_VAS$Question.Key!="BEGIN QUESTIONNAIRE",]
-# combined_VAS<-combined_VAS[combined_VAS$Question.Key!="END QUESTIONNAIRE",]
-
 # export combined data as a CSV. 
 write.csv(combined,"combined.csv",row.names=FALSE)
 
@@ -254,15 +249,22 @@ data$ID <- factor(data$Participant.Private.ID, levels=levs, labels=seq_along(lev
 #rename column
 data <- data %>% rename(Accuracy_Level = randomiser.2vg5)
 
-#remove rows with no trial_dur
-data <- subset(data, !is.na(trial_dur))
+#trial_dur and trial_duration need to be merged
+
+data$Trial.Duration <- ifelse( is.na(data$trial_dur), data$trial_duration, data$trial_dur)
+
+
+
+#remove rows with no trial_dur: this also erases all the ERROR message lines
+ data <- subset(data, !is.na(Trial_Duration))
 
 # wether answer was correct or not
-data$Correct[data$match == 1] = 1
-data$Correct[is.na(data$match)] <- 0
+data$accuracy [is.na(data$accuracy)] <- 0
+
+unique(data$Accuracy_Level)
+
 
 # create condition for Pic or Color
-data$Stim <- NA
 data$Stim[grepl("elephant", data$Stimulus)] = "Pic"
 data$Stim[grepl("house", data$Stimulus)] = "Pic"
 data$Stim[grepl("truck", data$Stimulus)] = "Pic"
@@ -297,8 +299,10 @@ data$Day[data$Tree.Node.Key == "task-wgpj"] = 2
 EXP = subset(data, select = -c(ï..Event.Index, UTC.Timestamp, UTC.Date, Local.Timestamp, Local.Timezone, Experiment.ID, Experiment.Version,
                                         Tree.Node.Key, Repeat.Key, Schedule.ID, Participant.Public.ID, Task.Version, Accuracy_Level, Key.Press, Test.Part,
                                         Participant.Starting.Group, Participant.Status, Participant.Completion.Code, Participant.External.Session.ID,
-                                        Checkpoint, checkpoint.yiku, checkpoint.gn26, Trial.Type, Internal.Node.ID, correct_resp, trial_duration,
-                                response, X.1, X.2, X, accuracy_percentage) )
+                                        Checkpoint, checkpoint.yiku, checkpoint.gn26, Trial.Type, Internal.Node.ID, correct_resp, trial_duration, Correct.Response,
+                                response, X.1, X.2, X, accuracy_percentage, Participant.Device.Type, Participant.Device, Participant.OS, Participant.Browser,
+                               Participant.Viewport.Size, Participant.Monitor.Size, accuracy_pic_trial, match, phase, correct_response, Correct, Stimulus,
+                               accuracy_color_trial, minutes, trial_dur) )
 
 #export combined data as a CSV. 
 write.csv(EXP,"EXP.csv",row.names=FALSE)
