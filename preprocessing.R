@@ -249,10 +249,8 @@ data$ID <- factor(data$Participant.Private.ID, levels=levs, labels=seq_along(lev
 #rename column
 data <- data %>% rename(Accuracy_Level = randomiser.2vg5)
 
-#trial_dur and trial_duration need to be merged
-
+#trial_dur and trial_duration need to be merged: replace NA values in each with the value of the other column in the same row
 data$Trial.Duration <- ifelse( is.na(data$trial_dur), data$trial_duration, data$trial_dur)
-
 
 
 #remove rows with no trial_dur: this also erases all the ERROR message lines
