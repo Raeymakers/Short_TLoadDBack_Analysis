@@ -42,62 +42,62 @@ files <- c("data_exp_73265-v15_task-1lhj.csv",
            "data_exp_73265-v15_task-5too.csv"
            )
 
-combined_PVT <- lapply(files, read.csv) %>% 
+combined <- lapply(files, read.csv) %>% 
   bind_rows()
 
-combined_PVT$ID[combined_PVT$Participant.Device.Type =="mobile"]
+combined$ID[combined$Participant.Device.Type =="mobile"]
 #one participant tried to do on mobile, but quitted when realised doesn't work.
 
 # exclude rows that contain END OF FILE and BEGIN TASK
-combined_PVT<-combined_PVT[combined_PVT$ï..Event.Index!="END OF FILE",]
-combined_PVT<-combined_PVT[combined_PVT$Trial.Number!="BEGIN TASK",]
+combined<-combined[combined$ï..Event.Index!="END OF FILE",]
+combined<-combined[combined$Trial.Number!="BEGIN TASK",]
 # remove instructions
-combined_PVT<-combined_PVT[combined_PVT$display!="instructions",]
+combined<-combined[combined$display!="instructions",]
 
 #Remove: all rows that are not Attempt == 1
-combined_PVT <- combined_PVT[!is.na(combined_PVT$Attempt),]
+combined <- combined[!is.na(combined$Attempt),]
 
 # export combined data as a CSV. 
-write.csv(combined_PVT,"combined_PVT.csv",row.names=FALSE)
+write.csv(combined,"combined_PVT.csv",row.names=FALSE)
  
 
 
 ### filtering
 
 #re-download
-combined_PVT <- read.csv(paste0(Dir, "combined_PVT.csv"), header = TRUE, sep = )
+data <- read.csv(paste0(Dir, "combined_PVT.csv"), header = TRUE, sep = )
 
 #create sequential IDs
-levs<-unique(combined_PVT$Participant.Private.ID)
-combined_PVT$ID <- factor(combined_PVT$Participant.Private.ID, levels=levs, labels=seq_along(levs))
+levs<-unique(data$Participant.Private.ID)
+data$ID <- factor(data$Participant.Private.ID, levels=levs, labels=seq_along(levs))
 
 #rename column
-combined_PVT <- combined_PVT %>% rename(Accuracy_Level = randomiser.2vg5)
+data <- data %>% rename(Accuracy_Level = randomiser.2vg5)
 
 #round RT
-combined_PVT$RT = round(combined_PVT$Reaction.Time, digits=2)
+data$RT = round(data$Reaction.Time, digits=2)
 
 
 # make columns for conditions: time = 1 or 2, task= PVT1, PVT2, etc
 
-combined_PVT$Condition[combined_PVT$Accuracy_Level=="Accuracy_level_1"] = 'LCL' # Low Cognitive Load
-combined_PVT$Condition[combined_PVT$Accuracy_Level=="Accuracy_level_0.55"] = 'HCL'
+data$Condition[data$Accuracy_Level=="Accuracy_level_1"] = 'LCL' # Low Cognitive Load
+data$Condition[data$Accuracy_Level=="Accuracy_level_0.55"] = 'HCL'
 
-combined_PVT$Test[combined_PVT$Task.Name=="PVT-1"] = 1 # before or after TloadDback
-combined_PVT$Test[combined_PVT$Task.Name=="PVT-2"] = 2
+data$Test[data$Task.Name=="PVT-1"] = 1 # before or after TloadDback
+data$Test[data$Task.Name=="PVT-2"] = 2
 
-combined_PVT$Day[combined_PVT$Tree.Node.Key == "task-1lhj"] = 1 # was taken on day 1
-combined_PVT$Day[combined_PVT$Tree.Node.Key == "task-ofgl"] = 1
-combined_PVT$Day[combined_PVT$Tree.Node.Key == "task-3l6b"] = 2 # was taken on day 2
-combined_PVT$Day[combined_PVT$Tree.Node.Key == "task-6xhv"] = 2
+data$Day[data$Tree.Node.Key == "task-1lhj"] = 1 # was taken on day 1
+data$Day[data$Tree.Node.Key == "task-ofgl"] = 1
+data$Day[data$Tree.Node.Key == "task-3l6b"] = 2 # was taken on day 2
+data$Day[data$Tree.Node.Key == "task-6xhv"] = 2
 
-combined_PVT$Day[combined_PVT$Tree.Node.Key == "task-jmi7"] = 1
-combined_PVT$Day[combined_PVT$Tree.Node.Key == "task-82mr"] = 1
-combined_PVT$Day[combined_PVT$Tree.Node.Key == "task-dt2v"] = 2
-combined_PVT$Day[combined_PVT$Tree.Node.Key == "task-5too"] = 2
+data$Day[data$Tree.Node.Key == "task-jmi7"] = 1
+data$Day[data$Tree.Node.Key == "task-82mr"] = 1
+data$Day[data$Tree.Node.Key == "task-dt2v"] = 2
+data$Day[data$Tree.Node.Key == "task-5too"] = 2
 
 #Drop unnecessary columns
-PVT = subset(combined_PVT, select = -c(ï..Event.Index, UTC.Timestamp, UTC.Date, Local.Timestamp, Local.Timezone, Experiment.ID, Accuracy_Level, reset,
+PVT = subset(data, select = -c(ï..Event.Index, UTC.Timestamp, UTC.Date, Local.Timestamp, Local.Timezone, Experiment.ID, Accuracy_Level, reset,
                                         Tree.Node.Key, Repeat.Key, Schedule.ID, Participant.Public.ID, Experiment.Version, Task.Version,
                                         Participant.Starting.Group, Participant.Status, Participant.Completion.Code, Participant.External.Session.ID, Participant.Device,
                                         Checkpoint, checkpoint.yiku, checkpoint.gn26, Spreadsheet, Spreadsheet.Name, Reaction.Onset, Response.Type, Reaction.Time,
@@ -143,62 +143,168 @@ files <- c("data_exp_73265-v15_questionnaire-krgc.csv",
            "data_exp_73265-v15_questionnaire-ty7a.csv"
 )
 
-combined_VAS <- lapply(files, read.csv) %>% 
+combined <- lapply(files, read.csv) %>% 
   bind_rows()
 
 # exclude rows that contain END OF FILE and BEGIN TASK
-combined_VAS<-combined_VAS[combined_VAS$ï..Event.Index!="END OF FILE",]
-combined_VAS<-combined_VAS[combined_VAS$Question.Key!="BEGIN QUESTIONNAIRE",]
-combined_VAS<-combined_VAS[combined_VAS$Question.Key!="END QUESTIONNAIRE",]
+combined<-combined[combined$ï..Event.Index!="END OF FILE",]
+combined<-combined[combined$Question.Key!="BEGIN QUESTIONNAIRE",]
+combined<-combined[combined$Question.Key!="END QUESTIONNAIRE",]
 
 # export combined data as a CSV. 
-write.csv(combined_VAS,"combined_VAS.csv",row.names=FALSE)
+write.csv(combined,"combined_VAS.csv",row.names=FALSE)
 
 
 ### filtering
 
 #re-download
-combined_VAS <- read.csv(paste0(Dir, "combined_VAS.csv"), header = TRUE, sep = )
+data <- read.csv(paste0(Dir, "combined_VAS.csv"), header = TRUE, sep = )
 
 #create sequential IDs
-levs<-unique(combined_VAS$Participant.Private.ID)
-combined_VAS$ID <- factor(combined_VAS$Participant.Private.ID, levels=levs, labels=seq_along(levs))
+levs<-unique(data$Participant.Private.ID)
+data$ID <- factor(data$Participant.Private.ID, levels=levs, labels=seq_along(levs))
 
 #rename column
-combined_VAS <- combined_VAS %>% rename(Accuracy_Level = randomiser.2vg5)
+data <- data %>% rename(Accuracy_Level = randomiser.2vg5)
 
 
 
 # make columns for conditions: time = 1 or 2, task= VAS1, VAS2, etc
 
-combined_VAS$Condition[combined_VAS$Accuracy_Level=="Accuracy_level_1"] = 'LCL' # Low Cognitive Load
-combined_VAS$Condition[combined_VAS$Accuracy_Level=="Accuracy_level_0.55"] = 'HCL'
+data$Condition[data$Accuracy_Level=="Accuracy_level_1"] = 'LCL' # Low Cognitive Load
+data$Condition[data$Accuracy_Level=="Accuracy_level_0.55"] = 'HCL'
 
-combined_VAS$Test[combined_VAS$Task.Name=="VAS-f-1"] = 1 # before or after TloadDback
-combined_VAS$Test[combined_VAS$Task.Name=="VAS-f-2"] = 2
+data$Test[data$Task.Name=="VAS-f-1"] = 1 # before or after TloadDback
+data$Test[data$Task.Name=="VAS-f-2"] = 2
 
-combined_VAS$Day[combined_VAS$Tree.Node.Key == "questionnaire-krgc"] = 1 # was taken on day 1
-combined_VAS$Day[combined_VAS$Tree.Node.Key == "questionnaire-37ue"] = 1
-combined_VAS$Day[combined_VAS$Tree.Node.Key == "questionnaire-w32a"] = 2 # was taken on day 2
-combined_VAS$Day[combined_VAS$Tree.Node.Key == "questionnaire-zkqn"] = 2
+data$Day[data$Tree.Node.Key == "questionnaire-krgc"] = 1 # was taken on day 1
+data$Day[data$Tree.Node.Key == "questionnaire-37ue"] = 1
+data$Day[data$Tree.Node.Key == "questionnaire-w32a"] = 2 # was taken on day 2
+data$Day[data$Tree.Node.Key == "questionnaire-zkqn"] = 2
 
-combined_VAS$Day[combined_VAS$Tree.Node.Key == "questionnaire-53zf"] = 1
-combined_VAS$Day[combined_VAS$Tree.Node.Key == "questionnaire-mxm5"] = 1
-combined_VAS$Day[combined_VAS$Tree.Node.Key == "questionnaire-5mfo"] = 2
-combined_VAS$Day[combined_VAS$Tree.Node.Key == "questionnaire-ty7a"] = 2
+data$Day[data$Tree.Node.Key == "questionnaire-53zf"] = 1
+data$Day[data$Tree.Node.Key == "questionnaire-mxm5"] = 1
+data$Day[data$Tree.Node.Key == "questionnaire-5mfo"] = 2
+data$Day[data$Tree.Node.Key == "questionnaire-ty7a"] = 2
 
 #check participant status
-combined_VAS[combined_VAS$Participant.Status != "complete"]
+data[data$Participant.Status != "complete"]
 
 
 #Drop unnecessary columns
-VAS = subset(combined_VAS, select = -c(ï..Event.Index, UTC.Timestamp, UTC.Date, Local.Timestamp, Local.Timezone, Experiment.ID, Accuracy_Level, Experiment.Version, Task.Version,
+VAS = subset(data, select = -c(ï..Event.Index, UTC.Timestamp, UTC.Date, Local.Timestamp, Local.Timezone, Experiment.ID, Accuracy_Level, Experiment.Version, Task.Version,
                                         Tree.Node.Key, Repeat.Key, Schedule.ID, Participant.Public.ID,
                                         Participant.Starting.Group, Participant.Status, Participant.Completion.Code, Participant.External.Session.ID,
                                         Checkpoint, checkpoint.yiku, checkpoint.gn26, Randomise.questionnaire.elements.) )
 
 #export combined data as a CSV. 
 write.csv(VAS,"VAS.csv",row.names=FALSE)
+
+
+
+##############################
+#                            #
+# TLOADDBACk      #
+#                            #
+#############################
+
+
+##### Set environment #####
+rm(list = ls()) # Clear environment
+cat("\014") # Clear console
+
+library(tidyverse)
+
+#Set your working directory to the folder in which all your CSV files are located
+setwd(dirname(rstudioapi::getActiveDocumentContext()$path))
+Dir = "C:/Users/ASUSTeK/OneDrive/Documenten/Github/Short_TLoadDBack/Data/"
+setwd(Dir)
+
+
+### Combining CSVs #
+files <- c("data_exp_73265-v15_task-2i7q.csv",
+           "data_exp_73265-v15_task-v1am.csv",
+           "data_exp_73265-v15_task-e9oa.csv",
+           "data_exp_73265-v15_task-wgpj.csv")
+
+combined <- lapply(files, read.csv) %>% 
+  bind_rows()
+
+# # exclude rows that contain END OF FILE and BEGIN TASK
+# combined_VAS<-combined_VAS[combined_VAS$ï..Event.Index!="END OF FILE",]
+# combined_VAS<-combined_VAS[combined_VAS$Question.Key!="BEGIN QUESTIONNAIRE",]
+# combined_VAS<-combined_VAS[combined_VAS$Question.Key!="END QUESTIONNAIRE",]
+
+# export combined data as a CSV. 
+write.csv(combined,"combined.csv",row.names=FALSE)
+
+
+### filtering
+
+#re-download
+data <- read.csv(paste0(Dir, "combined_EXP.csv"), header = TRUE, sep = )
+
+#remove row with no participant private ID
+data <- subset(data, !is.na(Participant.Private.ID))
+
+#create sequential IDs
+levs<-unique(data$Participant.Private.ID)
+data$ID <- factor(data$Participant.Private.ID, levels=levs, labels=seq_along(levs))
+
+#rename column
+data <- data %>% rename(Accuracy_Level = randomiser.2vg5)
+
+#remove rows with no trial_dur
+data <- subset(data, !is.na(trial_dur))
+
+# wether answer was correct or not
+data$Correct[data$match == 1] = 1
+data$Correct[is.na(data$match)] <- 0
+
+# create condition for Pic or Color
+data$Stim <- NA
+data$Stim[grepl("elephant", data$Stimulus)] = "Pic"
+data$Stim[grepl("house", data$Stimulus)] = "Pic"
+data$Stim[grepl("truck", data$Stimulus)] = "Pic"
+data$Stim[grepl("glass", data$Stimulus)] = "Pic"
+data$Stim[grepl("plane", data$Stimulus)] = "Pic"
+data$Stim[grepl("pear", data$Stimulus)] = "Pic"
+data$Stim[grepl("glass", data$Stimulus)] = "Pic"
+data$Stim[grepl("key", data$Stimulus)] = "Pic"
+data$Stim[grepl("comb", data$Stimulus)] = "Pic"
+
+data$Stim[grepl("blue", data$Stimulus)] = "Color"
+data$Stim[grepl("green", data$Stimulus)] = "Color"
+data$Stim[grepl("pink", data$Stimulus)] = "Color"
+data$Stim[grepl("purple", data$Stimulus)] = "Color"
+data$Stim[grepl("red", data$Stimulus)] = "Color"
+data$Stim[grepl("yellow", data$Stimulus)] = "Color"
+data$Stim[grepl("black", data$Stimulus)] = "Color"
+data$Stim[grepl("green", data$Stimulus)] = "Color"
+
+
+# make columns for conditions: time = 1 or 2, task= VAS1, VAS2, etc
+
+data$Condition[data$Accuracy_Level=="Accuracy_level_1"] = 'LCL' # Low Cognitive Load
+data$Condition[data$Accuracy_Level=="Accuracy_level_0.55"] = 'HCL'
+
+data$Day[data$Tree.Node.Key == "task-2i7q"] = 1 # was taken on day 1
+data$Day[data$Tree.Node.Key == "task-v1am"] = 2
+data$Day[data$Tree.Node.Key == "task-e9oa"] = 1 # was taken on day 2
+data$Day[data$Tree.Node.Key == "task-wgpj"] = 2
+
+#Drop unnecessary columns
+EXP = subset(data, select = -c(ï..Event.Index, UTC.Timestamp, UTC.Date, Local.Timestamp, Local.Timezone, Experiment.ID, Experiment.Version,
+                                        Tree.Node.Key, Repeat.Key, Schedule.ID, Participant.Public.ID, Task.Version, Accuracy_Level, Key.Press, Test.Part,
+                                        Participant.Starting.Group, Participant.Status, Participant.Completion.Code, Participant.External.Session.ID,
+                                        Checkpoint, checkpoint.yiku, checkpoint.gn26, Trial.Type, Internal.Node.ID, correct_resp, trial_duration,
+                                response, X.1, X.2, X, accuracy_percentage) )
+
+#export combined data as a CSV. 
+write.csv(EXP,"EXP.csv",row.names=FALSE)
+
+
+
 
 
 
