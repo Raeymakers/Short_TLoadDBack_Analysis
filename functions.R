@@ -83,4 +83,70 @@ GeomFlatViolin <- ggproto(
   required_aes = c("x", "y")
 )
 
+#function for split violin
+GeomSplitViolin <- ggproto("GeomSplitViolin", GeomViolin, 
+                           draw_group = function(self, data, ..., draw_quantiles = NULL) {
+                             data <- transform(data, xminv = x - violinwidth * (x - xmin), xmaxv = x + violinwidth * (xmax - x))
+                             grp <- data[1, "group"]
+                             newdata <- plyr::arrange(transform(data, x = if (grp %% 2 == 1) xminv else xmaxv), if (grp %% 2 == 1) y else -y)
+                             newdata <- rbind(newdata[1, ], newdata, newdata[nrow(newdata), ], newdata[1, ])
+                             newdata[c(1, nrow(newdata) - 1, nrow(newdata)), "x"] <- round(newdata[1, "x"])
+                             if (length(draw_quantiles) > 0 & !scales::zero_range(range(data$y))) {
+                               stopifnot(all(draw_quantiles >= 0), all(draw_quantiles <=
+                                                                         1))
+                               quantiles <- ggplot2:::create_quantile_segment_frame(data, draw_quantiles)
+                               aesthetics <- data[rep(1, nrow(quantiles)), setdiff(names(data), c("x", "y")), drop = FALSE]
+                               aesthetics$alpha <- rep(1, nrow(quantiles))
+                               both <- cbind(quantiles, aesthetics)
+                               quantile_grob <- GeomPath$draw_panel(both, ...)
+                               ggplot2:::ggname("geom_split_violin", grid::grobTree(GeomPolygon$draw_panel(newdata, ...), quantile_grob))}
+                             else {ggplot2:::ggname("geom_split_violin", GeomPolygon$draw_panel(newdata, ...)) }})
+
+geom_split_violin <- function(mapping = NULL, data = NULL, stat = "ydensity", position = "identity", ..., 
+                              draw_quantiles = NULL, trim = TRUE, scale = "area", na.rm = FALSE, 
+                              show.legend = NA, inherit.aes = TRUE) {
+  layer(data = data, mapping = mapping, stat = stat, geom = GeomSplitViolin, 
+        position = position, show.legend = show.legend, inherit.aes = inherit.aes, 
+        params = list(trim = trim, scale = scale, draw_quantiles = draw_quantiles, na.rm = na.rm, ...))}
+
+
+one_way_plotf <-function(data, emmean_dataframe, var){
+  ggplot(data, aes(x= Condition, y = .data[[var]]))+
+    geom_flat_violin(aes(fill=Condition),position = position_nudge(x =.2, y = 0), alpha=.5, adjust = 1.5, colour = NA)+
+    geom_boxplot(aes(x = Condition, y = .data[[var]], fill = Condition), outlier.shape=NA, alpha= .45, width = .1, colour = "black") +
+    geom_point(data= emmean_dataframe, aes(x = Condition, y = emmean, fill=Condition), size=4)+
+    theme(
+      legend.key.size=unit(1.3, 'cm'),
+      legend.text=element_text(size=13),
+      plot.title = element_text(size=rel(2)),
+      panel.border = element_blank(),
+      panel.background = element_blank(),
+      axis.line = element_line(colour = "black"),
+      panel.grid.major.y = element_line( size=.1, color="#dedede" ),
+      axis.text.x=element_text(size=rel(1.5)),
+      axis.title.y=element_text(size=rel(1.4)),
+      axis.title.x = element_blank())
+}
+
+two_way_plotf <- function(data, emmean_dataframe, var){
+  ggplot()+
+    geom_flat_violin(data= data, aes(x= Day, y= .data[[var]], fill=Condition),position = position_nudge(x =.3, y = 0), adjust = 1.5, alpha = .5, colour = NA)+
+    geom_boxplot(data= data, aes(x=Day, y=.data[[var]], fill=Condition), outlier.shape=NA, alpha=.5, width=.3, colour='black')+
+    geom_point(data= emmean_dataframe, aes(x = Day, y = emmean, fill=Condition), position= position_dodge(0.3), size=4)+
+    theme(
+      legend.key.size=unit(1.3, 'cm'), # make keys of legend bigger
+      legend.text=element_text(size=13), # text legend bigger
+      plot.title = element_text(size=rel(2)), # plot title bigger
+      panel.border = element_blank(), # no border panel (APA)
+      panel.background = element_blank(), #white simple background
+      axis.line = element_line(colour = "black"), # axis lines black
+      panel.grid.major.y = element_line( size=.1, color="#dedede" ), #slight grey horizontal lines
+      axis.text.x=element_text(size=rel(2)), #size x axis title
+      axis.text.y=element_text(size=rel(1.3)),
+      axis.title.y=element_text(size=rel(1.5)), #size y axis title
+      axis.title.x = element_blank()) # leave away extra x title (only 'foll' and 'lut')
+}
+
+
+
 

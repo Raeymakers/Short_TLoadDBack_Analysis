@@ -17,14 +17,11 @@ knitr::opts_chunk$set(echo = TRUE)
 library(tidyverse)
 
 # Get and declare functions
-setwd(dirname(rstudioapi::getActiveDocumentContext()$path)) #Set WD to script location - Else it can't find functions.R
-source("functions.R") # This is a file in the same directory where you can stash your functions so you can save them there and have them together
-
 #Set working directory to the folder in which all CSV files are located
 setwd(dirname(rstudioapi::getActiveDocumentContext()$path))
+source("C:/Users/ASUSTeK/OneDrive/Documenten/Github/Short_TLoadDBack/functions.R") # This is a file in the same directory where you can stash your functions so you can save them there and have them together
 
 Dir = "C:/Users/ASUSTeK/OneDrive/Documenten/Github/Short_TLoadDBack/Data/"
-
 setwd(Dir)
 
 #Download PVT data (this datafile is made in 'preprocessing')
@@ -33,17 +30,55 @@ PVT <- read.csv(paste0(Dir, "PVT.csv"), header = TRUE, sep = )
 #Download VAS-f data
 VAS <- read.csv(paste0(Dir, "VAS.csv"), header = TRUE, sep = )
 
-#drop columns
-allPVT <- PVT
-allVAS <- VAS
-PVT = subset(PVT, select = -c(Participant.Device.Type,  Participant.OS, Participant.Browser, Participant.Monitor.Size, Participant.Viewport.Size) )
-VAS = subset(VAS, select = -c(Participant.Device.Type, Participant.Device, Participant.OS, Participant.Browser, Participant.Monitor.Size, Participant.Viewport.Size) )
+#Download EXP data
+EXP <- read.csv(paste0(Dir, "EXP.csv"), header = TRUE, sep = )
+
+
 
 #VAS has 'quantised: 1-11 instead of 0-10
 
 ```
 
 ```{r}
+### CHECKING TLOADNBACK#
+
+# count 'accuracy' (0 or 1) in LCL vs HCL
+sum(EXP$accuracy[EXP$Condition=="HCL"])
+sum(EXP$accuracy[EXP$Condition=="LCL"])
+mean(EXP$accuracy[EXP$Condition=="HCL"])
+mean(EXP$accuracy[EXP$Condition=="LCL"])
+
+EXP$Day <- factor(EXP$Day)
+EXP$Condition <- factor(EXP$Condition)
+
+#do this with shihny!!
+three_way_acc <-lm(accuracy~Condition * Day, data=EXP)
+one_way_acc <- lm(accuracy~Condition , data=EXP)
+summary(three_way_acc)
+summary(one_way_acc)
+library(effects)
+plot(one_way_acc)
+
+three_way_prop <- lm(prop_correct~Condition * Day, data=EXP)
+one_way_prop <- lm(prop_correct~Condition, data=EXP)
+summary(three_way_prop)
+summary(one_way_prop)
+
+
+#visualise
+library(emmeans)
+emmeans1 <- emmeans(fit, pairwise ~ Condition | Day, adjust ="fdr", type = "response")
+two_way_emm <- summary(emmeans1)$emmeans
+
+emmeans2 <- emmeans(fit, pairwise ~ Condition, adjust ="fdr", type = "response")
+one_way_emm <- summary(emmeans2)$emmeans
+
+  
+plot <- one_way_plotf(EXP, one_way_emm, "prop_correct")
+
+plot <- two_way_plotf(EXP, two_way_emm, "prop_correct")
+
+
 # calculate PVT result per participant 
 # The performance score is calculated as 100% minus the number of lapses and false starts relative to the number of valid stimuli and false starts. 
 #It ranges from 100% (optimal performance, no lapses or false starts) to 0% (worst possible performance, only lapses and false starts). 
@@ -69,6 +104,8 @@ PVT$Test <- factor(PVT$Test)
 PVT$Condition <- factor(PVT$Condition)
 
 levels(PVT$Condition)
+
+formula <- lm( x + y + 1|ID)
 
 
 

@@ -104,7 +104,7 @@ PVT = subset(data, select = -c(ï..Event.Index, UTC.Timestamp, UTC.Date, Local.Ti
                                         X.Coordinate, Y.Coordinate, randomise_blocks, X, display, Dishonest, Spreadsheet.Row, Screen.Number, Screen.Name, Zone.Name,
                                         Zone.Type, Response, Attempt, Timed.Out, randomise_trials, Incorrect) )
 
-  
+PVT = subset(PVT, select = -c(Participant.Device.Type,  Participant.OS, Participant.Browser, Participant.Monitor.Size, Participant.Viewport.Size) ) 
 
 #export combined data as a CSV. 
 write.csv(PVT,"PVT.csv",row.names=FALSE)
@@ -195,7 +195,9 @@ data[data$Participant.Status != "complete"]
 VAS = subset(data, select = -c(ï..Event.Index, UTC.Timestamp, UTC.Date, Local.Timestamp, Local.Timezone, Experiment.ID, Accuracy_Level, Experiment.Version, Task.Version,
                                         Tree.Node.Key, Repeat.Key, Schedule.ID, Participant.Public.ID,
                                         Participant.Starting.Group, Participant.Status, Participant.Completion.Code, Participant.External.Session.ID,
-                                        Checkpoint, checkpoint.yiku, checkpoint.gn26, Randomise.questionnaire.elements.) )
+                                       Checkpoint, checkpoint.yiku, checkpoint.gn26, Randomise.questionnaire.elements.) )
+
+VAS = subset(VAS, select = -c(Participant.Device.Type, Participant.Device, Participant.OS, Participant.Browser, Participant.Monitor.Size, Participant.Viewport.Size) )
 
 #export combined data as a CSV. 
 write.csv(VAS,"VAS.csv",row.names=FALSE)
@@ -292,6 +294,16 @@ data$Day[data$Tree.Node.Key == "task-2i7q"] = 1 # was taken on day 1
 data$Day[data$Tree.Node.Key == "task-v1am"] = 2
 data$Day[data$Tree.Node.Key == "task-e9oa"] = 1 # was taken on day 2
 data$Day[data$Tree.Node.Key == "task-wgpj"] = 2
+
+#round RT
+data$RT = round(data$Reaction.Time, digits=2)
+
+#remove fullscreen and instruction 
+data<-data[!(data$Trial.Type=="instructions"|data$Trial.Type=="fullscreen"),]
+
+# if no RT, it means that RT = 0
+# wether answer was correct or not
+data$accuracy [is.na(data$accuracy)] <- 0
 
 #Drop unnecessary columns
 EXP = subset(data, select = -c(ï..Event.Index, UTC.Timestamp, UTC.Date, Local.Timestamp, Local.Timezone, Experiment.ID, Experiment.Version,
