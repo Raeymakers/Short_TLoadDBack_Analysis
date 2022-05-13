@@ -18,6 +18,7 @@ library(tidyverse)
 
 # Get and declare functions
 #Set working directory to the folder in which all CSV files are located
+
 setwd(dirname(rstudioapi::getActiveDocumentContext()$path))
 source("C:/Users/ASUSTeK/OneDrive/Documenten/Github/Short_TLoadDBack/functions.R") # This is a file in the same directory where you can stash your functions so you can save them there and have them together
 
@@ -29,13 +30,10 @@ PVT <- read.csv(paste0(Dir, "PVT.csv"), header = TRUE, sep = )
 
 #Download VAS-f data
 VAS <- read.csv(paste0(Dir, "VAS.csv"), header = TRUE, sep = )
+#VAS has 'quantised: 1-11 instead of 0-10
 
 #Download EXP data
 EXP <- read.csv(paste0(Dir, "EXP.csv"), header = TRUE, sep = )
-
-
-
-#VAS has 'quantised: 1-11 instead of 0-10
 
 ```
 
@@ -79,24 +77,125 @@ plot <- one_way_plotf(EXP, one_way_emm, "prop_correct")
 plot <- two_way_plotf(EXP, two_way_emm, "prop_correct")
 
 
-# calculate PVT result per participant 
-# The performance score is calculated as 100% minus the number of lapses and false starts relative to the number of valid stimuli and false starts. 
-#It ranges from 100% (optimal performance, no lapses or false starts) to 0% (worst possible performance, only lapses and false starts). 
-#https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3197786/
+```
 
-
-#check Participant.Browser and Participant.OS and Participant.Monitor.size
-unique(allPVT$Participant.Browser)
-
-
+```{r}
+#### CLEANING PVT ####
 
 #Dataframe from day 1
 PVT1 <- PVT[!(PVT$Day==2),]
 
-#remove rows with all NAs
-# PVT[complete.cases(PVT[])]
-PVT1 %>% drop_na()
+library(reshape2)
+library(cowplot)
 
+#plot reaction times with raincloudplot
+d<-melt(data.frame(rt=c(PVT1$RT))) # we melt to wide format 
+ggplot(d, aes(x = variable, y = value, fill=variable))+
+  geom_flat_violin(position = position_nudge(x = .2, y = 0),adjust =2)+
+  ylab('rt')+xlab('amount')+coord_flip()+theme_cowplot()+
+  geom_point(position=position_jitter(width=.15), size=2)+
+  geom_boxplot(width= .10, outlier.shape = NA)+
+  theme(legend.position="none")+
+  ggtitle("reaction times with outliers")
+
+summary(PVT1$RT)
+hist(PVT1$RT,
+     xlab = "RT",
+     main = "Histogram of RT",
+     breaks = sqrt(nrow(PVT1)))
+
+print('upper 97.5% bound')
+quantile (PVT1$RT, 0.975)
+
+
+# remove RT over 2000 millisec
+PVT1 <- subset(PVT1, RT < 3800)
+d<-melt(data.frame(rt=c(PVT1$RT)))
+ggplot(d, aes(x = variable, y = value, fill=variable))+
+  geom_flat_violin(position = position_nudge(x = .2, y = 0),adjust =2)+
+  geom_point(position=position_jitter(width=.15), size=0.25)+
+  ylab('rt')+xlab('amount')+coord_flip()+theme_cowplot()+
+  geom_boxplot(width= .10, outlier.shape = NA)+
+  theme(legend.position="none")+
+  guides(fill=FALSE)+
+  ggtitle("reaction times < 3800 millisec")
+
+summary(PVT1$RT)
+hist(PVT1$RT,
+     xlab = "RT",
+     main = "Histogram of RT",
+     breaks = sqrt(nrow(PVT1)))
+
+
+out<-boxplot.stats(PVT1$RT)$out#outliers
+out_ind<-which(PVT1$RT %in% c(out))#row numbers that contain outliers
+boxplot(PVT1$RT, ylab='rt') #boxplot
+mtext(paste('boxplot with outliers')) #boxplot with outliers
+
+
+#remove outliers: sign that they were not paying attention
+outliers <- boxplot(PVT1$RT, plot=FALSE)$out
+PVT1<- PVT1[-which(PVT1$RT %in% outliers),]
+
+
+
+# check normality of PVT1 RT
+library("car")
+qqPlot(PVT1$RT)
+
+# log transform data
+PVT1$RT = log(PVT1$RT)
+
+qqPlot(PVT1$RT)
+
+
+
+
+
+
+### Do like Borrogan : mean 1/RT
+
+PVT$RT <- 1/(PVT$RT/1000) #1/RT
+
+# we have 97 iDs. Each participant is in either LCL or HCL
+for (i in 1:97) {
+  PVT$MeanRT[PVT$ID==i & PVT$Test==1 & PVT$Day==1]= mean (PVT$RT[PVT$ID==i & PVT$Test==1 & PVT$Day==1])
+  PVT$MeanRT[PVT$ID==i & PVT$Test==2 & PVT$Day==1]= mean (PVT$RT[PVT$ID==i & PVT$Test==2 & PVT$Day==1])
+  PVT$MeanRT[PVT$ID==i & PVT$Test==1 & PVT$Day==2]= mean (PVT$RT[PVT$ID==i & PVT$Test==1 & PVT$Day==2])
+  PVT$MeanRT[PVT$ID==i & PVT$Test==2 & PVT$Day==2]= mean (PVT$RT[PVT$ID==i & PVT$Test==2 & PVT$Day==2])
+  }
+
+PVT <- PVT[!duplicated(PVT$MeanRT), ]
+
+length(unique(PVT$MeanRT))
+#388
+97*4
+
+glimpse(PVT)
+
+
+#plot reaction times with raincloudplot
+d<-melt(data.frame(rt=c(PVT$MeanRT))) # we melt to wide format 
+ggplot(d, aes(x = variable, y = value, fill=variable))+
+  geom_flat_violin(position = position_nudge(x = .2, y = 0),adjust =2)+
+  ylab('MeanRT')+xlab('amount')+coord_flip()+theme_cowplot()+
+  geom_point(position=position_jitter(width=.15), size=2)+
+  geom_boxplot(width= .10, outlier.shape = NA)+
+  theme(legend.position="none")+
+  ggtitle("reaction times with outliers")
+
+summary(PVT$MeanRT)
+hist(PVT$MeanRT,
+     xlab = "MeanRT",
+     main = "Histogram of MeanRT",
+     breaks = sqrt(nrow(PVT)))
+
+qqPlot(PVT$MeanRT)
+
+
+```
+
+```{r}
 
 # make factors
 PVT$Day <- factor(PVT$Day)
@@ -106,8 +205,6 @@ PVT$Condition <- factor(PVT$Condition)
 levels(PVT$Condition)
 
 formula <- lm( x + y + 1|ID)
-
-
 
 # summarize data per group
 library(dplyr)
@@ -119,25 +216,6 @@ sum <- group_by(PVT, Condition, Test, Day) %>%
   )
 sum
 
-#visualise outliers:
-summary(PVT1$RT)
-hist(PVT1$RT,
-     xlab = "RT",
-     main = "Histogram of RT",
-     breaks = sqrt(nrow(PVT1))
-)
-
-#boxplot.stats(PVT1$RT)$out
-
-lower_bound <- quantile(PVT1$RT, 0.025, na.rm=TRUE)
-lower_bound
-upper_bound <- quantile(PVT1$RT, 0.975, na.rm=TRUE)
-upper_bound
-outlier_ind <- which(PVT1$RT < lower_bound | PVT1$RT > upper_bound)
-outlier_ind
-
-
-PVT1[!PVT1 %in% boxplot.stats(PVT1$RT)$out]
 
 library(ggplot2)
 ggplot(sum, aes(x=Condition, y=mean)) + 
