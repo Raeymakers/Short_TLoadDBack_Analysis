@@ -132,12 +132,9 @@ out_ind<-which(PVT1$RT %in% c(out))#row numbers that contain outliers
 boxplot(PVT1$RT, ylab='rt') #boxplot
 mtext(paste('boxplot with outliers')) #boxplot with outliers
 
-
 #remove outliers: sign that they were not paying attention
 outliers <- boxplot(PVT1$RT, plot=FALSE)$out
 PVT1<- PVT1[-which(PVT1$RT %in% outliers),]
-
-
 
 # check normality of PVT1 RT
 library("car")
@@ -149,13 +146,33 @@ PVT1$RT = log(PVT1$RT)
 qqPlot(PVT1$RT)
 
 
+################ PVT ################
 
-
+#plot reaction times with raincloudplot
+library(reshape2)
+library(cowplot)
+d<-melt(data.frame(RT=c(PVT$RT))) # we melt to wide format 
+ggplot(d, aes(x = variable, y = value, fill=variable))+
+  geom_flat_violin(position = position_nudge(x = .2, y = 0),adjust =2)+
+  coord_flip()+
+  theme_cowplot()+
+  geom_point(position=position_jitter(width=.15), size=2)+
+  geom_boxplot(width= .10, outlier.shape = NA)+
+  theme(legend.position="none")
 
 
 ### Do like Borrogan : mean 1/RT
 
 PVT$RT <- 1/(PVT$RT/1000) #1/RT
+
+d<-melt(data.frame(RT=c(PVT$RT))) # we melt to wide format 
+ggplot(d, aes(x = variable, y = value, fill=variable))+
+  geom_flat_violin(position = position_nudge(x = .2, y = 0),adjust =2)+
+  coord_flip()+
+  theme_cowplot()+
+  geom_point(position=position_jitter(width=.15), size=2)+
+  geom_boxplot(width= .10, outlier.shape = NA)+
+  theme(legend.position="none")
 
 # we have 97 iDs. Each participant is in either LCL or HCL
 for (i in 1:97) {
@@ -165,32 +182,36 @@ for (i in 1:97) {
   PVT$MeanRT[PVT$ID==i & PVT$Test==2 & PVT$Day==2]= mean (PVT$RT[PVT$ID==i & PVT$Test==2 & PVT$Day==2])
   }
 
-PVT <- PVT[!duplicated(PVT$MeanRT), ]
+# remove duplicates: now only 1 datapoint per MeanRT
+PVT_c <- PVT[!duplicated(PVT$MeanRT), ]
 
-length(unique(PVT$MeanRT))
+length(unique(PVT_c$MeanRT))
 #388
 97*4
 
-glimpse(PVT)
+glimpse(PVT_clean)
+
+
+
 
 
 #plot reaction times with raincloudplot
-d<-melt(data.frame(rt=c(PVT$MeanRT))) # we melt to wide format 
+d<-melt(data.frame(rt=c(PVT_c$MeanRT))) # we melt to wide format 
 ggplot(d, aes(x = variable, y = value, fill=variable))+
   geom_flat_violin(position = position_nudge(x = .2, y = 0),adjust =2)+
   ylab('MeanRT')+xlab('amount')+coord_flip()+theme_cowplot()+
   geom_point(position=position_jitter(width=.15), size=2)+
   geom_boxplot(width= .10, outlier.shape = NA)+
   theme(legend.position="none")+
-  ggtitle("reaction times with outliers")
+  ggtitle("reciprocal reaction times")
 
-summary(PVT$MeanRT)
-hist(PVT$MeanRT,
+summary(PVT_c$MeanRT)
+hist(PVT_c$MeanRT,
      xlab = "MeanRT",
      main = "Histogram of MeanRT",
      breaks = sqrt(nrow(PVT)))
 
-qqPlot(PVT$MeanRT)
+qqPlot(PVT_c$MeanRT)
 
 
 ```
@@ -198,68 +219,87 @@ qqPlot(PVT$MeanRT)
 ```{r}
 
 # make factors
-PVT$Day <- factor(PVT$Day)
-PVT$Test <- factor(PVT$Test)
-PVT$Condition <- factor(PVT$Condition)
+PVT_c$Day <- factor(PVT_c$Day)
+PVT_c$Test <- factor(PVT_c$Test)
+PVT_c$Condition <- factor(PVT_c$Condition)
 
-levels(PVT$Condition)
+levels(PVT_c$Condition)
 
-formula <- lm( x + y + 1|ID)
+formula <- lm( PVT_c$MeanRT ~ PVT_c$Condition * PVT_c$Day * PVT_c$Test + 1|PVT_c$ID)
 
 # summarize data per group
 library(dplyr)
-sum <- group_by(PVT, Condition, Test, Day) %>%
+sum <- group_by(PVT_c, Condition, Test, Day) %>%
   summarise(
     count = n(),
-    mean = mean(RT, na.rm = TRUE),
+    mean = mean(MeanRT, na.rm = TRUE),
     sd = sd(RT, na.rm = TRUE)
   )
-sum
+sum 
+
 
 
 library(ggplot2)
 ggplot(sum, aes(x=Condition, y=mean)) + 
   geom_violin()
-ggplot(PVT1, aes(x=Condition, y=RT)) + 
+ggplot(PVT_c, aes(x=Condition, y=MeanRT)) + 
   geom_violin()
 
 library("ggpubr")
-ggboxplot(PVT1, x = "Condition", y = "RT", 
+ggboxplot(PVT_c, x = "Condition", y = "MeanRT", 
           color = "Condition", palette = c("#00AFBB", "#E7B800", "#FC4E07"),
           ylab = "RT", xlab = "Condition")
 
-ggplot(PVT1, aes(x = Condition, 
-                     y = RT, 
-                     color=Test)) +
-  geom_point() +
-  labs(title = "this is the title")
-
-#plot reaction times with raincloudplot
-library(reshape2)
-library(cowplot)
-d<-melt(data.frame(RT=c(PVT1$RT))) # we melt to wide format 
-ggplot(d, aes(x = variable, y = value, fill=variable))+
-  geom_flat_violin(position = position_nudge(x = .2, y = 0),adjust =2)+
-  ylab('RT')+xlab('amount')+coord_flip()+theme_cowplot()+
-  geom_point(position=position_jitter(width=.15), size=2)+
-  geom_boxplot(width= .10, outlier.shape = NA)+
-  theme(legend.position="none")+
-  ggtitle("reaction times with outliers")
-
-# calculate mean RT PER PARTICIPANT 
-aggdf <- aggregate (RT ~ ID , PVT, mean)
-names(aggdf)[2] <- "Mean_RT_Participant"
-PVT <- merge(PVT1, aggdf, by="ID")
-
-aggdf <- aggregate (RT ~ Day * Condition * ID , PVT, mean)
-names(aggdf)[2] <- "Mean_RT"
-
-
-aggregate(ID ~ Condition, #Data column group by period
-            data = PVT1, 
-            FUN = function(x) length(unique(x)))
 
 
 
+
+
+```
+
+```{r}
+
+########## VAS-f ###########
+
+# take means
+#each time 13 questions, with answers on a scale of 0-9 (Response)
+# if Question.key ocntains 'quantised' then it is on 1-10 (filter out!)
+VAS <-VAS[(grepl("quantised", VAS$Question.Key)),]
+
+
+# take mean of the scale per participant, per day/test. 
+for (i in 1:97) {
+  VAS$MeanR[VAS$ID==i & VAS$Test==1 & VAS$Day==1]= mean (VAS$Response[VAS$ID==i & VAS$Test==1 & VAS$Day==1])
+  VAS$MeanR[VAS$ID==i & VAS$Test==2 & VAS$Day==1]= mean (VAS$Response[VAS$ID==i & VAS$Test==2 & VAS$Day==1])
+  VAS$MeanR[VAS$ID==i & VAS$Test==1 & VAS$Day==2]= mean (VAS$Response[VAS$ID==i & VAS$Test==1 & VAS$Day==2])
+  VAS$MeanR[VAS$ID==i & VAS$Test==2 & VAS$Day==2]= mean (VAS$Response[VAS$ID==i & VAS$Test==2 & VAS$Day==2])
+}
+
+VASC <- VAS[!duplicated(VAS$MeanR), ]
+VASC = subset(VASC, select = -c(Question.Key, Response  ))
+
+ # make factors
+VASC$Day <- factor(VASC$Day)
+VASC$Test <- factor(VASC$Test)
+VASC$Condition <- factor(VASC$Condition)
+
+#count
+sum(VASC$MeanR[VASC$Condition=="HCL"])
+sum(VASC$MeanR[VASC$Condition=="LCL"])
+mean(VASC$MeanR[VASC$Condition=="HCL"])
+mean(VASC$MeanR[VASC$Condition=="LCL"])
+
+
+#visualise
+library(emmeans)
+emmeans1 <- emmeans(three_way, pairwise ~ Condition | Day, adjust ="fdr", type = "response")
+two_way_emm <- summary(emmeans1)$emmeans
+
+emmeans2 <- emmeans(one_way, pairwise ~ Condition, adjust ="fdr", type = "response")
+one_way_emm <- summary(emmeans2)$emmeans
+
+one_way_plotf(VASC, one_way_emm, "MeanR")
+
+two_way_plotf(VASC, two_way_emm, "MeanR")
 
 ```
