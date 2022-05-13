@@ -216,6 +216,7 @@ rm(list = ls()) # Clear environment
 cat("\014") # Clear console
 
 library(tidyverse)
+library(dplyr)
 
 #Set your working directory to the folder in which all your CSV files are located
 setwd(dirname(rstudioapi::getActiveDocumentContext()$path))
@@ -249,14 +250,8 @@ levs<-unique(data$Participant.Private.ID)
 data$ID <- factor(data$Participant.Private.ID, levels=levs, labels=seq_along(levs))
 
 #rename column
-data <- data %>% rename(Accuracy_Level = randomiser.2vg5)
+data <- dplyr::rename(data, Accuracy_Level = randomiser.2vg5)
 
-#trial_dur and trial_duration need to be merged: replace NA values in each with the value of the other column in the same row
-data$Trial.Duration <- ifelse( is.na(data$trial_dur), data$trial_duration, data$trial_dur)
-
-
-#remove rows with no trial_dur: this also erases all the ERROR message lines
- data <- subset(data, !is.na(Trial_Duration))
 
 # wether answer was correct or not
 data$accuracy [is.na(data$accuracy)] <- 0
@@ -302,17 +297,16 @@ data$RT = round(data$Reaction.Time, digits=2)
 data<-data[!(data$Trial.Type=="instructions"|data$Trial.Type=="fullscreen"),]
 
 # if no RT, it means that RT = 0
-# wether answer was correct or not
-data$accuracy [is.na(data$accuracy)] <- 0
+data$RT [is.na(data$RT)] <- 0
 
 #Drop unnecessary columns
 EXP = subset(data, select = -c(ï..Event.Index, UTC.Timestamp, UTC.Date, Local.Timestamp, Local.Timezone, Experiment.ID, Experiment.Version,
-                                        Tree.Node.Key, Repeat.Key, Schedule.ID, Participant.Public.ID, Task.Version, Accuracy_Level, Key.Press, Test.Part,
+                                        Tree.Node.Key, Repeat.Key, Schedule.ID, Participant.Public.ID, Task.Version, Key.Press, Test.Part,
                                         Participant.Starting.Group, Participant.Status, Participant.Completion.Code, Participant.External.Session.ID,
                                         Checkpoint, checkpoint.yiku, checkpoint.gn26, Trial.Type, Internal.Node.ID, correct_resp, trial_duration, Correct.Response,
                                 response, X.1, X.2, X, accuracy_percentage, Participant.Device.Type, Participant.Device, Participant.OS, Participant.Browser,
                                Participant.Viewport.Size, Participant.Monitor.Size, accuracy_pic_trial, match, phase, correct_response, Correct, Stimulus,
-                               accuracy_color_trial, minutes, trial_dur) )
+                               accuracy_color_trial, minutes, trial_dur, Reaction.Time) )
 
 #export combined data as a CSV. 
 write.csv(EXP,"EXP.csv",row.names=FALSE)
