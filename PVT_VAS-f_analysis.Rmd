@@ -225,7 +225,7 @@ PVT_c$Condition <- factor(PVT_c$Condition)
 
 levels(PVT_c$Condition)
 
-formula <- lm( PVT_c$MeanRT ~ PVT_c$Condition * PVT_c$Day * PVT_c$Test + 1|PVT_c$ID)
+# formula <- lm( PVT_c$MeanRT ~ PVT_c$Condition * PVT_c$Day * PVT_c$Test + 1|PVT_c$ID)
 
 # summarize data per group
 library(dplyr)
@@ -252,7 +252,23 @@ ggboxplot(PVT_c, x = "Condition", y = "MeanRT",
 
 
 
-
+# one_way <- lm(Diff~Condition , data=VASC)
+# emmeans1 <- emmeans(one_way, pairwise ~ Condition, adjust ="fdr", type = "response")
+# one_way_emm <- summary(emmeans2)$emmeans
+# one_way_plotf(VASC, one_way_emm, "Diff")
+# 
+# Anova(one_way, type='III')
+# summary(emmeans1)
+# emmeans1$contrasts
+# 
+# two_way <-lm(Diff~Condition * Day, data=VASC)
+# emmeans2 <- emmeans(one_way, pairwise ~ Condition, adjust ="fdr", type = "response")
+# one_way_emm <- summary(emmeans2)$emmeans
+# two_way_plotf(VASC, two_way_emm, "MeanR")
+# 
+# Anova(two_way, type='III')
+# summary(emmeans2)
+# emmeans2$contrasts
 
 
 ```
@@ -267,6 +283,7 @@ ggboxplot(PVT_c, x = "Condition", y = "MeanRT",
 VAS <-VAS[(grepl("quantised", VAS$Question.Key)),]
 
 
+
 # take mean of the scale per participant, per day/test. 
 for (i in 1:97) {
   VAS$MeanR[VAS$ID==i & VAS$Test==1 & VAS$Day==1]= mean (VAS$Response[VAS$ID==i & VAS$Test==1 & VAS$Day==1])
@@ -275,11 +292,25 @@ for (i in 1:97) {
   VAS$MeanR[VAS$ID==i & VAS$Test==2 & VAS$Day==2]= mean (VAS$Response[VAS$ID==i & VAS$Test==2 & VAS$Day==2])
 }
 
-VASC <- VAS[!duplicated(VAS$MeanR), ]
+# check if conditions are equal
+length(VAS$MeanR[VAS$Test==1 & VAS$Day ==1 & VAS$ID==1])
+length(VAS$MeanR[VAS$Test==2 & VAS$Day ==1 & VAS$ID==1])
+length(VAS$MeanR[VAS$Test==1 & VAS$Day ==2 & VAS$ID==1])
+length(VAS$MeanR[VAS$Test==2 & VAS$Day ==2 & VAS$ID==1])
+
+#make dataframe with 1 measure per condition
+VASC<- VAS[VAS$Question.Key=='0-quantised',]
+
+length(VASC$MeanR[VASC$Test==1 & VASC$Day ==1 & VASC$ID==1])
+length(VASC$MeanR[VASC$Test==2 & VASC$Day ==1 & VASC$ID==1])
+length(VASC$MeanR[VASC$Test==1 & VASC$Day ==2 & VASC$ID==1])
+length(VASC$MeanR[VASC$Test==2 & VASC$Day ==2 & VASC$ID==1])
+
+
 VASC = subset(VASC, select = -c(Question.Key, Response  ))
 
  # make factors
-VASC$Day <- factor(VASC$Day)
+VAS$Day <- factor(VAS$Day)
 VASC$Test <- factor(VASC$Test)
 VASC$Condition <- factor(VASC$Condition)
 
@@ -301,5 +332,90 @@ one_way_emm <- summary(emmeans2)$emmeans
 one_way_plotf(VASC, one_way_emm, "MeanR")
 
 two_way_plotf(VASC, two_way_emm, "MeanR")
+
+
+# correcting for baseline: VASC$Diff as VAs op test 2 - test 1 per dag
+# option 1: op de meanR van VASC
+
+for (i in 1:97) {
+  VASC$Diff[VASC$ID==i & VASC$Day==1] = (VASC$MeanR[VASC$Test==2 & VASC$ID==i & VASC$Day==1]- VASC$MeanR[VASC$Test==1 & VASC$ID==i & VASC$Day==1])
+  VASC$Diff[VASC$ID==i & VASC$Day==2] = (VASC$MeanR[VASC$Test==2 & VASC$ID==i & VASC$Day==2]- VASC$MeanR[VASC$Test==1 & VASC$ID==i & VASC$Day==2])
+}
+
+# now we can visualise & do analysis on this difference score 
+#count
+sum(VASC$Diff[VASC$Condition=="HCL"])
+sum(VASC$Diff[VASC$Condition=="LCL"])
+mean(VASC$Diff[VASC$Condition=="HCL"])
+mean(VASC$Diff[VASC$Condition=="LCL"])
+
+one_way <- lm(Diff~Condition , data=VASC)
+emmeans1 <- emmeans(one_way, pairwise ~ Condition, adjust ="fdr", type = "response")
+one_way_emm <- summary(emmeans2)$emmeans
+one_way_plotf(VASC, one_way_emm, "Diff")
+
+Anova(one_way, type='III')
+summary(emmeans1)
+emmeans1$contrasts
+
+two_way <-lm(Diff~Condition * Day, data=VASC)
+emmeans2 <- emmeans(one_way, pairwise ~ Condition, adjust ="fdr", type = "response")
+one_way_emm <- summary(emmeans2)$emmeans
+two_way_plotf(VASC, two_way_emm, "MeanR")
+
+Anova(two_way, type='III')
+summary(emmeans2)
+emmeans2$contrasts
+
+#option 2: baseline correction directly on response scores
+for (i in 1:97) {
+  VAS$Diff[VAS$ID==i & VAS$Day==1] = (VAS$MeanR[VAS$Test==2 & VAS$ID==i & VAS$Day==1]- VAS$MeanR[VAS$Test==1 & VAS$ID==i & VAS$Day==1])
+  VAS$Diff[VAS$ID==i & VAS$Day==2] = (VAS$MeanR[VAS$Test==2 & VAS$ID==i & VAS$Day==2]- VAS$MeanR[VAS$Test==1 & VAS$ID==i & VAS$Day==2])
+}
+
+sum(VAS$Diff[VAS$Condition=="HCL"])
+sum(VAS$Diff[VAS$Condition=="LCL"])
+mean(VAS$Diff[VAS$Condition=="HCL"])
+mean(VAS$Diff[VAS$Condition=="LCL"])
+
+
+one_way <- lm(Diff~Condition , data=VAS)
+emmeans1 <- emmeans(one_way, pairwise ~ Condition, adjust ="fdr", type = "response")
+one_way_emm <- summary(emmeans2)$emmeans
+one_way_plotf(VAS, one_way_emm, "Diff") 
+
+Anova(one_way, type='III')
+summary(emmeans1)
+emmeans1$contrasts
+
+
+library("ggplot2")
+emmeans1<-data.frame(emmeans1)
+emmeans1<-emmeans1[-c(3),]
+ggplot(emmeans1, aes(Condition, emmean)) +        # ggplot2 plot with confidence intervals
+  geom_point() +
+  geom_errorbar(aes(ymin = lower.CL, ymax = upper.CL))
+
+
+
+two_way <-lm(Diff~Condition * Day, data=VAS)
+emmeans2 <- emmeans(one_way, pairwise ~ Condition, adjust ="fdr", type = "response")
+one_way_emm <- summary(emmeans2)$emmeans
+two_way_plotf(VAS, two_way_emm, "MeanR")
+
+Anova(two_way, type='III')
+summary(emmeans2)
+emmeans2$contrasts
+
+
+
+
+
+# option 3: baseline correction, then means of that
+
+
+
+
+
 
 ```
