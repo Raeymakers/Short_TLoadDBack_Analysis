@@ -143,8 +143,8 @@ two_way_plotf <- function(data, emmean_dataframe, var){
       panel.grid.major.y = element_line( size=.1, color="#dedede" ), #slight grey horizontal lines
       axis.text.x=element_text(size=rel(2)), #size x axis title
       axis.text.y=element_text(size=rel(1.3)),
-      axis.title.y=element_text(size=rel(1.5)), #size y axis title
-}
+      axis.title.y=element_text(size=rel(1.5))) #size y axis title
+      }
 
 
 
