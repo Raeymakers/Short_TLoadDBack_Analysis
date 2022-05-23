@@ -22,6 +22,10 @@ library(dplyr)
 library(ggplot2)
 library(MuMIn)
 library(effsize)
+library(reshape2)
+library(cowplot)
+library(car)
+library(ggpubr)
 
 # Get and declare functions
 #Set working directory to the folder in which all CSV files are located
@@ -47,8 +51,8 @@ EXP <- read.csv(paste0(Dir, "EXP.csv"), header = TRUE, sep = )
 ```{r}
 ### CHECKING TLOADNBACK#
 
-#### EXP DAY 1/2 ####
-EXP <- EXP[!(EXP$Day==1),]
+#### EXP both days ####
+EXP = subset(EXP, select = -c(Local.Date, Participant.Private.ID, Task.Name, Accuracy_Level, Trial.Index, Time.Elapsed))
 
 # count 'accuracy' (0 or 1) in LCL vs HCL
 sum(EXP$accuracy[EXP$Condition=="HCL"])
@@ -60,43 +64,48 @@ EXP$Day <- as.factor(EXP$Day)
 EXP$Condition <- as.factor(EXP$Condition)
 EXP$ID <- as.factor(EXP$ID)
 
-#do this with shihny!!
-three_way_acc <-lm(accuracy~Condition * Day, data=EXP)
-one_way_acc <- lm(accuracy~Condition , data=EXP)
-summary(three_way_acc)
-summary(one_way_acc)
+#create mean prop_correct per participant??
 
-three_way_prop <- lm(prop_correct~Condition * Day, data=EXP)
-one_way_prop <- lm(prop_correct~Condition, data=EXP)
-summary(three_way_prop)
-summary(one_way_prop)
+#make dataframe with 1 measure per condition
+VAS1<- VAS1[VAS$Question.Key=='0-quantised',]
 
+#accuracy
+fit <-lm(accuracy~Condition * Day, data=EXP)
+summary(fit)
 
-#visualise
-emmeans1 <- emmeans(fit, pairwise ~ Condition | Day, adjust ="fdr", type = "response")
+fit <- lm(accuracy~Condition , data=EXP)
+summary(fit)
+
+## proportion correct
+# Condition * Day
+fit <- lm(prop_correct~Condition * Day, data=EXP)
+summary(fit)
+
+emmeans1 <- emmeans(fit, pairwise ~ Condition * Day, adjust ="fdr", type = "response")
 two_way_emm <- summary(emmeans1)$emmeans
+two_way_plotf(EXP, two_way_emm, "prop_correct")
+
+# Condition
+fit <- lm(prop_correct~Condition, data=EXP)
+summary(fit)
 
 emmeans2 <- emmeans(fit, pairwise ~ Condition, adjust ="fdr", type = "response")
 one_way_emm <- summary(emmeans2)$emmeans
+one_way_plotf(EXP, one_way_emm, "prop_correct")
 
-  
-plot <- one_way_plotf(EXP, one_way_emm, "prop_correct")
+# EXP DAY 1
+EXP <- EXP[!(EXP$Day==2),]
 
-plot <- two_way_plotf(EXP, two_way_emm, "prop_correct")
-
-
-
+# EXP DAY 2
+EXP <- EXP[!(EXP$Day==1),]
 
 ```
 
 ```{r}
 #### CLEANING PVT ####
 
-#Dataframe from day 1
+#PVT day 1
 PVT1 <- PVT[!(PVT$Day==2),]
-
-library(reshape2)
-library(cowplot)
 
 #plot reaction times with raincloudplot
 d<-melt(data.frame(rt=c(PVT1$RT))) # we melt to wide format 
@@ -140,36 +149,23 @@ hist(PVT1$RT,
 out<-boxplot.stats(PVT1$RT)$out#outliers
 out_ind<-which(PVT1$RT %in% c(out))#row numbers that contain outliers
 boxplot(PVT1$RT, ylab='rt') #boxplot
-mtext(paste('boxplot with outliers')) #boxplot with outliers
 
 #remove outliers: sign that they were not paying attention
 outliers <- boxplot(PVT1$RT, plot=FALSE)$out
 PVT1<- PVT1[-which(PVT1$RT %in% outliers),]
 
 # check normality of PVT1 RT
-library("car")
 qqPlot(PVT1$RT)
 
 # log transform data
 PVT1$RT = log(PVT1$RT)
 
 qqPlot(PVT1$RT)
+```
 
+```{r}
 
 ################ PVT ################
-
-#plot reaction times with raincloudplot
-library(reshape2)
-library(cowplot)
-d<-melt(data.frame(RT=c(PVT$RT))) # we melt to wide format 
-ggplot(d, aes(x = variable, y = value, fill=variable))+
-  geom_flat_violin(position = position_nudge(x = .2, y = 0),adjust =2)+
-  coord_flip()+
-  theme_cowplot()+
-  geom_point(position=position_jitter(width=.15), size=2)+
-  geom_boxplot(width= .10, outlier.shape = NA)+
-  theme(legend.position="none")
-
 
 ### Do like Borrogan : mean 1/RT
 
@@ -193,15 +189,14 @@ for (i in 1:97) {
   }
 
 # remove duplicates: now only 1 datapoint per MeanRT
-PVT_c <- PVT[!duplicated(PVT$MeanRT), ]
+#WRONG! change this line! take 1 measure per ID. New dataframe??
+# PVT_c <- PVT[!duplicated(PVT$MeanRT), ]
 
 length(unique(PVT_c$MeanRT))
 #388
 97*4
 
-glimpse(PVT_clean)
-
-
+glimpse(PVT_c)
 
 
 
@@ -238,7 +233,6 @@ levels(PVT_c$Condition)
 # formula <- lm( PVT_c$MeanRT ~ PVT_c$Condition * PVT_c$Day * PVT_c$Test + 1|PVT_c$ID)
 
 # summarize data per group
-library(dplyr)
 sum <- group_by(PVT_c, Condition, Test, Day) %>%
   summarise(
     count = n(),
@@ -249,13 +243,11 @@ sum
 
 
 
-library(ggplot2)
 ggplot(sum, aes(x=Condition, y=mean)) + 
   geom_violin()
 ggplot(PVT_c, aes(x=Condition, y=MeanRT)) + 
   geom_violin()
 
-library("ggpubr")
 ggboxplot(PVT_c, x = "Condition", y = "MeanRT", 
           color = "Condition", palette = c("#00AFBB", "#E7B800", "#FC4E07"),
           ylab = "RT", xlab = "Condition")
@@ -306,6 +298,9 @@ for (i in 1:97) {
 length(VAS1$Sum[VAS1$Test==1 & VAS1$Day ==1 & VAS1$ID==1])
 length(VAS1$Sum[VAS1$Test==2 & VAS1$Day ==1 & VAS1$ID==1])
 
+#make dataframe with 1 measure per condition
+VAS1<- VAS1[VAS$Question.Key=='0-quantised',]
+
 # correcting for baseline: VAS1C$Diff as VAS1 op test 2 - test 1 per dag
 for (i in 1:97) {
   VAS1$Diff[VAS1$ID==i & VAS1$Day==1] = (VAS1$Sum[VAS1$Test==2 & VAS1$ID==i & VAS1$Day==1]- VAS1$Sum[VAS1$Test==1 & VAS1$ID==i & VAS1$Day==1])
@@ -344,8 +339,7 @@ ggplot(emmeans1, aes(Condition, emmean)) +        # ggplot2 plot with confidence
 
 # summarize 
 ## data table
-library(data.table)
-library(dplyr)
+
 Data_dt <- as.data.table(VAS1)
 Data_sum <- Data_dt[,.(meanResp=mean(Diff)), by = .(Condition, ID)]
 my_sum <- Data_sum %>%
@@ -359,9 +353,6 @@ my_sum <- Data_sum %>%
   mutate( ic=se * qt((1-0.05)/2 + .5, n-1))
 print(my_sum)
 ## plot 
-library(ggplot2)
-library(ARTool)
-library(MuMIn)
 ### using standard error
 ggplot(my_sum) + 
   geom_bar( aes(x=Condition, y=mean), stat="identity", fill=c("black", "lightgrey"), alpha=0.5) + 
@@ -402,6 +393,9 @@ for (i in 1:97) {
 length(VAS2$Sum[VAS2$Test==1 & VAS2$Day ==2 & VAS2$ID==1])
 length(VAS2$Sum[VAS2$Test==2 & VAS2$Day ==2 & VAS2$ID==1])
 
+#make dataframe with 1 measure per condition
+VAS2<- VAS2[VAS$Question.Key=='0-quantised',]
+
 # correcting for baseline: VAS2C$Diff as VAS2 op test 2 - test 1 per dag
 for (i in 1:97) {
   VAS2$Diff[VAS2$ID==i] = (VAS2$Sum[VAS2$Test==2 & VAS2$ID==i]- VAS2$Sum[VAS2$Test==1 & VAS2$ID==i])
@@ -420,7 +414,6 @@ VAS2$ID <- as.factor(VAS2$ID)
 
 
 one_way <- lm(Diff~Condition , data=VAS2)
-library(emmeans)
 emmeans1 <- emmeans(one_way, pairwise ~ Condition, adjust ="fdr", type = "response")
 one_way_emm <- summary(emmeans1)$emmeans
 one_way_plotf(VAS2, one_way_emm, "Diff") 
@@ -430,7 +423,6 @@ summary(emmeans1)
 emmeans1$contrasts
 
 
-library("ggplot2")
 emmeans1<-data.frame(emmeans1)
 emmeans1<-emmeans1[-c(3),]
 ggplot(emmeans1, aes(Condition, emmean)) +        # ggplot2 plot with confidence intervals
@@ -440,8 +432,6 @@ ggplot(emmeans1, aes(Condition, emmean)) +        # ggplot2 plot with confidence
 
 # summarize 
 ## data table
-library(data.table)
-library(dplyr)
 Data_dt <- as.data.table(VAS2)
 Data_sum <- Data_dt[,.(meanResp=mean(Diff)), by = .(Condition, ID)]
 my_sum <- Data_sum %>%
@@ -455,8 +445,6 @@ my_sum <- Data_sum %>%
   mutate( ic=se * qt((1-0.05)/2 + .5, n-1))
 print(my_sum)
 ## plot 
-library(ggplot2)µ
-library(MuMIn)
 ### using standard error
 ggplot(my_sum) + 
   geom_bar( aes(x=Condition, y=mean), stat="identity", fill=c("black", "lightgrey"), alpha=0.5) + 
@@ -467,12 +455,6 @@ ggplot(my_sum) +
   geom_bar( aes(x=Condition, y=mean), stat="identity", fill=c("black", "lightgrey"), alpha=0.5) +
   geom_errorbar( aes(x=Condition, ymin=mean-ic, ymax=mean+ic), width=0.4, colour="white", alpha=0.9, size=1.5) +
   ggtitle("Experiment 1: Overall Overall difference VAS2-f - using confidence interval")
-
-
-# one sample t-tests
-library(effsize)
-VAS21 <- VAS21[VAS21$Condition == "DLPFC",] 
-cohen.d(VAS2$Diff, f = NA, paired = TRUE, mu = 0.5)
 
 
 
