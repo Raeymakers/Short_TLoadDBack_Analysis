@@ -1,0 +1,151 @@
+---
+title: "PVT_VAS-f_analysis"
+author: "Sofie Raeymakers"
+date: "5/3/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+rm(list = ls()) # Clear environment
+cat("\014") # Clear console
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r message=FALSE, warning = FALSE}
+##### Set environment #####
+
+library(tidyverse)
+library(effects)
+library(emmeans)
+library(data.table)
+library(dplyr)
+library(ggplot2)
+library(MuMIn)
+library(effsize)
+library(reshape2)
+library(cowplot)
+library(car)
+library(ggpubr)
+
+# Get and declare functions
+#Set working directory to the folder in which all CSV files are located
+
+setwd(dirname(rstudioapi::getActiveDocumentContext()$path))
+source("C:/Users/ASUSTeK/OneDrive/Documenten/Github/Short_TLoadDBack/functions.R") # This is a file in the same directory where you can stash your functions so you can save them there and have them together
+
+Dir = "C:/Users/ASUSTeK/OneDrive/Documenten/Github/Short_TLoadDBack/Data/"
+setwd(Dir)
+
+#Download PVT data (this datafile is made in 'preprocessing')
+PVT <- read.csv(paste0(Dir, "PVT.csv"), header = TRUE, sep = )
+
+```
+
+```{r}
+
+################ PVT ################
+
+# https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3197786/: over 500 ms is considered 'lapse'
+PVT <- subset(PVT, RT < 600)
+
+### Do like Borrogan : mean 1/RT
+# PVT$RT <- 1/(PVT$RT/1000) #1/RT
+
+#visualise
+d<-melt(data.frame(RT=c(PVT$RT))) # we melt to wide format 
+ggplot(d, aes(x = variable, y = value, fill=variable))+
+  geom_flat_violin(position = position_nudge(x = .2, y = 0),adjust =2)+
+  coord_flip()+
+  theme_cowplot()+
+  geom_point(position=position_jitter(width=.15), size=2)+
+  geom_boxplot(width= .10, outlier.shape = NA)+
+  theme(legend.position="reciprocal RT")
+
+qqPlot(PVT$RT)
+
+# we have 97 iDs. Each participant is in either LCL or HCL
+for (i in 1:97) {
+  PVT$MeanRT[PVT$ID==i & PVT$Test==1 & PVT$Day==1]= mean (PVT$RT[PVT$ID==i & PVT$Test==1 & PVT$Day==1])
+  PVT$MeanRT[PVT$ID==i & PVT$Test==2 & PVT$Day==1]= mean (PVT$RT[PVT$ID==i & PVT$Test==2 & PVT$Day==1])
+  PVT$MeanRT[PVT$ID==i & PVT$Test==1 & PVT$Day==2]= mean (PVT$RT[PVT$ID==i & PVT$Test==1 & PVT$Day==2])
+  PVT$MeanRT[PVT$ID==i & PVT$Test==2 & PVT$Day==2]= mean (PVT$RT[PVT$ID==i & PVT$Test==2 & PVT$Day==2])
+  }
+
+# remove duplicates: now only 1 datapoint per MeanRT
+
+length(unique(PVT$MeanRT))
+#388
+97*4
+glimpse(PVT)
+
+# make factors
+PVT$Day <- factor(PVT$Day)
+PVT$Test <- factor(PVT$Test)
+PVT$Condition <- factor(PVT$Condition)
+#check factors
+levels(PVT$Condition)
+
+# summarize data per group
+sum <- group_by(PVT, Condition, Test, Day) %>%
+  summarise(
+    count = n(),
+    mean = mean(MeanRT, na.rm = TRUE),
+    sd = sd(RT, na.rm = TRUE)
+  )
+sum 
+
+ggplot(sum, aes(x=Condition, y=mean)) + 
+  geom_violin()
+
+
+
+#### DAY 1 ####
+
+#PVT day 1
+PVT1 <- PVT[!(PVT$Day==2),]
+ggboxplot(PVT1, x = "Condition", y = "MeanRT", 
+          color = "Condition", palette = c("#00AFBB", "#E7B800", "#FC4E07"),
+          ylab = "RT", xlab = "Condition")
+
+#Kolmogorov-Smirnov normality test: OK
+ks.test(PVT$MeanRT, "pnorm", mean=mean(PVT$MeanRT), sd=sd(PVT$MeanRT))
+
+# we want to see if PVT MeanRT is lower in LCL than HCL
+one_way <- lm (MeanRT ~Condition * Test, data=PVT1)
+Anova(one_way, type="III")
+
+### we want to specifically know if MeanRT is higher in HCL compared to LCL
+
+### JUST FOR DAY 1
+for (i in 1:97) {
+  PVT$Diff[PVT$ID==i] = (PVT$MeanRT[PVT$Test==2 & PVT$ID==i & PVT$Day==1] - PVT$MeanRT[PVT$Test==1 & PVT$ID==i & PVT$Day==1])
+}
+
+# dus stel Test 2 heeft RT van 30 ms voor taak en 31 na taak: klein verschil, weinig effect van de taak
+
+one_way <- lm(Diff~Condition, data=PVT)
+emmeans1<- emmeans(one_way, pairwise ~ Condition, adjust ="fdr", type = "response")
+one_way_emm <- summary(emmeans1)$emmeans
+one_way_plotf(PVT, one_way_emm, "Diff")
+
+Anova(one_way, type='III')
+summary(emmeans1)
+emmeans1$contrasts
+
+### JUST FOR DAY 2
+
+for (i in 1:97) {
+  PVT$Diff[PVT$ID==i] = (PVT$MeanRT[PVT$Test==2 & PVT$ID==i & PVT$Day==2]- PVT$MeanRT[PVT$Test==1 & PVT$ID==i & PVT$Day==2])
+}
+
+one_way <- lm(Diff~Condition, data=PVT)
+emmeans1<- emmeans(one_way, pairwise ~ Condition, adjust ="fdr", type = "response")
+one_way_emm <- summary(emmeans1)$emmeans
+one_way_plotf(PVT, one_way_emm, "Diff")
+
+Anova(one_way, type='III')
+summary(emmeans1)
+emmeans1$contrasts
+
+```
+
