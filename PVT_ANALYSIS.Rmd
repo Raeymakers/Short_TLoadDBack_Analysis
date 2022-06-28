@@ -26,6 +26,7 @@ library(reshape2)
 library(cowplot)
 library(car)
 library(ggpubr)
+library(rstatix)
 
 # Get and declare functions
 #Set working directory to the folder in which all CSV files are located
@@ -36,32 +37,43 @@ source("C:/Users/ASUSTeK/OneDrive/Documenten/Github/Short_TLoadDBack/functions.R
 Dir = "C:/Users/ASUSTeK/OneDrive/Documenten/Github/Short_TLoadDBack/Data/"
 setwd(Dir)
 
-#Download PVT data (this datafile is made in 'preprocessing')
-PVT <- read.csv(paste0(Dir, "PVT.csv"), header = TRUE, sep = )
-
 ```
 
 ```{r}
 
-################ PVT ################
+#Download PVT data (this datafile is made in 'preprocessing')
+PVT <- read.csv(paste0(Dir, "PVT.csv"), header = TRUE, sep = )
 
-# https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3197786/: over 500 ms is considered 'lapse'
-PVT <- subset(PVT, RT < 600)
 
 ### Do like Borrogan : mean 1/RT
-# PVT$RT <- 1/(PVT$RT/1000) #1/RT
-
+PVT$RT <- 1/(PVT$RT/1000) #1/RT  ==> other result
 #visualise
-d<-melt(data.frame(RT=c(PVT$RT))) # we melt to wide format 
+d<-melt(data.frame(RT=c(PVT$RT))) # we melt to wide format
 ggplot(d, aes(x = variable, y = value, fill=variable))+
   geom_flat_violin(position = position_nudge(x = .2, y = 0),adjust =2)+
   coord_flip()+
   theme_cowplot()+
   geom_point(position=position_jitter(width=.15), size=2)+
   geom_boxplot(width= .10, outlier.shape = NA)+
-  theme(legend.position="reciprocal RT")
-
+  theme(legend.position="RT")
 qqPlot(PVT$RT)
+
+# check for significant outliers: 
+outliers <- boxplot(PVT$RT, plot=FALSE)$out
+PVT<- PVT[-which(PVT$RT %in% outliers),]
+# log transform data
+# PVT$RT = log(PVT$MeanRT)
+#visualise
+d<-melt(data.frame(RT=c(PVT$RT))) # we melt to wide format
+ggplot(d, aes(x = variable, y = value, fill=variable))+
+  geom_flat_violin(position = position_nudge(x = .2, y = 0),adjust =2)+
+  coord_flip()+
+  theme_cowplot()+
+  geom_point(position=position_jitter(width=.15), size=2)+
+  geom_boxplot(width= .10, outlier.shape = NA)+
+  theme(legend.position="RT")
+
+
 
 # we have 97 iDs. Each participant is in either LCL or HCL
 for (i in 1:97) {
@@ -69,14 +81,28 @@ for (i in 1:97) {
   PVT$MeanRT[PVT$ID==i & PVT$Test==2 & PVT$Day==1]= mean (PVT$RT[PVT$ID==i & PVT$Test==2 & PVT$Day==1])
   PVT$MeanRT[PVT$ID==i & PVT$Test==1 & PVT$Day==2]= mean (PVT$RT[PVT$ID==i & PVT$Test==1 & PVT$Day==2])
   PVT$MeanRT[PVT$ID==i & PVT$Test==2 & PVT$Day==2]= mean (PVT$RT[PVT$ID==i & PVT$Test==2 & PVT$Day==2])
-  }
+}
 
 # remove duplicates: now only 1 datapoint per MeanRT
+#make dataframe with 1 measure per condition, participant and day
+PVT<- PVT[PVT$Trial.Number==1,]
 
 length(unique(PVT$MeanRT))
 #388
 97*4
 glimpse(PVT)
+
+
+#visualise
+d<-melt(data.frame(RT=c(PVT$MeanRT))) # we melt to wide format
+ggplot(d, aes(x = variable, y = value, fill=variable))+
+  geom_flat_violin(position = position_nudge(x = .2, y = 0),adjust =2)+
+  coord_flip()+
+  theme_cowplot()+
+  geom_point(position=position_jitter(width=.15), size=2)+
+  geom_boxplot(width= .10, outlier.shape = NA)+
+  theme(legend.position="RT")
+
 
 # make factors
 PVT$Day <- factor(PVT$Day)
@@ -94,58 +120,78 @@ sum <- group_by(PVT, Condition, Test, Day) %>%
   )
 sum 
 
+#HCL: should have a bigger difference between TEST 1 and TEST 2
+#The RT is a measure of CF. THe higher the RT, the higher the CF. 
+#thus, HCL should lower the RT more then the LCL condition
+# test 1 Day 1 - test 2 tay 1 HCL = 
+2.85-2.65 # 0.2: quicker after Tloadback
+# test 1 day 1 - test 2 day 2 HCL=
+2.71 - 2.59 # 0.12: slower after TloadDback
+#test 1 day 2 - test 2 day 1  LCL:
+2.84 - 2.72 # 0.12: quicker after TloadDback
+#test 1 day 2 - test 2 day 2 LCL
+2.76 - 2.63 #  0.13: slower after TloadDback
+
 ggplot(sum, aes(x=Condition, y=mean)) + 
   geom_violin()
 
 
+### REPEATED-MEASURES ANOVA TO COMPARE TIREDNESS BETWEEN DAYS: 
+#look only at before-test measure (test=1)
+PVT <- PVT[!(PVT$Test==2),] # Only looking at non-hormonal contraceptives, so kick out all other data
 
-#### DAY 1 ####
+PVT = subset(PVT, select = -c(Local.Date, Participant.Private.ID, Task.Name, Trial.Number, Correct, timelimit))
 
-#PVT day 1
-PVT1 <- PVT[!(PVT$Day==2),]
-ggboxplot(PVT1, x = "Condition", y = "MeanRT", 
-          color = "Condition", palette = c("#00AFBB", "#E7B800", "#FC4E07"),
-          ylab = "RT", xlab = "Condition")
+#normality
+qqPlot(PVT$MeanRT)
+PVT %>%
+  group_by(Day) %>%
+  shapiro_test(MeanRT) # if p bigger than 0.05, normal distribution
+ggqqplot(PVT, 'MeanRT', facet.by='Day')
 
-#Kolmogorov-Smirnov normality test: OK
-ks.test(PVT$MeanRT, "pnorm", mean=mean(PVT$MeanRT), sd=sd(PVT$MeanRT))
+#statistics
+res.aov2 <- aov(MeanRT ~ Condition + Day, data= PVT)
+summary(res.aov2)
 
-# we want to see if PVT MeanRT is lower in LCL than HCL
-one_way <- lm (MeanRT ~Condition * Test, data=PVT1)
-Anova(one_way, type="III")
+#there is a sign difference between the days but not between the conditions
 
-### we want to specifically know if MeanRT is higher in HCL compared to LCL
+#summary statistics
+PVT %>%
+  group_by(Day, Condition) %>%
+  get_summary_stats(MeanRT, type = "mean_sd")
 
-### JUST FOR DAY 1
-for (i in 1:97) {
-  PVT$Diff[PVT$ID==i] = (PVT$MeanRT[PVT$Test==2 & PVT$ID==i & PVT$Day==1] - PVT$MeanRT[PVT$Test==1 & PVT$ID==i & PVT$Day==1])
-}
+#visualize
+library(lme4)
+formula <- lmer('MeanRT ~ Day * Condition + (1|ID)', data= PVT)
+emmean_dataframe = as.data.frame(emmeans(formula, pairwise ~ Day | Condition , adjust ="fdr", type = "response"))
 
-# dus stel Test 2 heeft RT van 30 ms voor taak en 31 na taak: klein verschil, weinig effect van de taak
+two_w <- lm(MeanRT~Condition * Day, data=PVT)
+emmeans1<- emmeans(two_w, pairwise ~ Condition * Day, adjust ="fdr", type = "response")
+emmean_dataframe <- summary(emmeans1)$emmeans
+# emmean_dataframe <- sum[!(sum$Test==2),]
+ 
+ ggplot(PVT, aes(x= Day, y = MeanRT))+
+    geom_flat_violin(aes(fill=Condition),position = position_nudge(x =.2, y = 0), alpha=.5, adjust = 1.5, colour = NA)+
+ geom_boxplot(aes(x = Day, y = MeanRT, fill = Condition), outlier.shape=NA, alpha= .45, width = .1, colour = "black") +
+    geom_point(data= emmean_dataframe, aes(x =Day, y = emmean, fill=Condition), position= position_dodge(0.1), size=4)+
+    theme(
+      legend.key.size=unit(1.3, 'cm'),
+      legend.text=element_text(size=13),
+      plot.title = element_text(size=rel(2)),
+      panel.border = element_blank(),
+      panel.background = element_blank(),
+      axis.line = element_line(colour = "black"),
+      panel.grid.major.y = element_line( size=.1, color="#dedede" ),
+      axis.text.x=element_text(size=rel(1.5)),
+      axis.title.y=element_text(size=rel(1.4)),
+      axis.title.x = element_blank())
+ 
 
-one_way <- lm(Diff~Condition, data=PVT)
-emmeans1<- emmeans(one_way, pairwise ~ Condition, adjust ="fdr", type = "response")
-one_way_emm <- summary(emmeans1)$emmeans
-one_way_plotf(PVT, one_way_emm, "Diff")
-
-Anova(one_way, type='III')
+Anova(two_w, type='III')
 summary(emmeans1)
-emmeans1$contrasts
 
-### JUST FOR DAY 2
 
-for (i in 1:97) {
-  PVT$Diff[PVT$ID==i] = (PVT$MeanRT[PVT$Test==2 & PVT$ID==i & PVT$Day==2]- PVT$MeanRT[PVT$Test==1 & PVT$ID==i & PVT$Day==2])
-}
-
-one_way <- lm(Diff~Condition, data=PVT)
-emmeans1<- emmeans(one_way, pairwise ~ Condition, adjust ="fdr", type = "response")
-one_way_emm <- summary(emmeans1)$emmeans
-one_way_plotf(PVT, one_way_emm, "Diff")
-
-Anova(one_way, type='III')
-summary(emmeans1)
-emmeans1$contrasts
+### PLOT: 
 
 ```
 
