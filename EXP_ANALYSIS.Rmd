@@ -26,6 +26,7 @@ library(reshape2)
 library(cowplot)
 library(car)
 library(ggpubr)
+library(lme4)
 
 # Get and declare functions
 #Set working directory to the folder in which all CSV files are located
@@ -36,7 +37,7 @@ source("C:/Users/ASUSTeK/OneDrive/Documenten/Github/Short_TLoadDBack/functions.R
 Dir = "C:/Users/ASUSTeK/OneDrive/Documenten/Github/Short_TLoadDBack/Data/"
 setwd(Dir)
 #Download EXP data
-EXP <- read.csv(paste0(Dir, "EXP.csv"), header = TRUE, sep = )
+data<- read.csv(paste0(Dir, "EXP.csv"), header = TRUE, sep = )
 
 ```
 
@@ -50,48 +51,291 @@ EXP <- read.csv(paste0(Dir, "EXP.csv"), header = TRUE, sep = )
 # weighted accuracy (prop.correct): t1 and t2 is first and second 20%, t3 and t4 last 20% (with 20% in middle)
 
 #we remove rows that have prop.correct == NA 'because these were the ERROR' trials
-EXP <- EXP[!is.na(EXP$prop_correct),]
+data <- data[!is.na(data$prop_correct),]
 
 # create a trial.index that goes from 1 to ..
 for (i in 1:97) {
-  EXP$trial.index[EXP$ID==i]= 1:length(unique(EXP$Trial.Index[EXP$ID ==i]))
+  data$trial.index[data$ID==i]= 1:length(unique(data$Trial.Index[data$ID ==i]))
 }
+length(data$trial.index[is.na(data$trial.index)])
 
 #remove some unnecessary rows
-EXP = subset(EXP, select = -c(Local.Date, Participant.Private.ID, Task.Name, Accuracy_Level, Time.Elapsed, Trial.Index))
+data = subset(data, select = -c(Local.Date, Participant.Private.ID, Task.Name, Accuracy_Level, Time.Elapsed, Trial.Index))
 
 # create var Time that say if it is part of t1, t2, t3 or t4
 # not every participant equal amount of trials, because dependent on their speed/accuracy
 # we need to work with percents. 
-length(unique(EXP$trial.index[EXP$ID ==1])) #remember, 2 days! so this is the highest amount of trials
-count_index <- EXP %>% count(ID)
+length(unique(data$trial.index[data$ID ==1])) #remember, 2 days! so this is the highest amount of trials
+count_index <- data %>% count(ID)
 count_index$n[count_index$ID==1] #total amount of trials for this participant
 
 # amount will be different depending on the day, so calculate per day!
 # each t has 20%, with 20% empty in the middle
 
 for (i in 1:97) {
-  EXP$Time[EXP$ID ==i & EXP$Day==1 & EXP$trial.index<length(EXP$trial.index[EXP$Day==1 & EXP$ID==i]) ] = "t5"
-  EXP$Time[EXP$ID ==i & EXP$Day==1 & EXP$trial.index<(0.80* length(EXP$trial.index[EXP$Day==1 & EXP$ID==i])) ] = "t4"
-  EXP$Time[EXP$ID ==i & EXP$Day==1 & EXP$trial.index<(0.60* length(EXP$trial.index[EXP$Day==1 & EXP$ID==i])) ] = "t3"
-  EXP$Time[EXP$ID ==i & EXP$Day==1 & EXP$trial.index<(0.40* length(EXP$trial.index[EXP$Day==1 & EXP$ID==i])) ] = "t2"
-  EXP$Time[EXP$ID ==i & EXP$Day==1 & EXP$trial.index<(0.20* length(EXP$trial.index[EXP$Day==1 & EXP$ID==i])) ] = "t1"
+  data$Time[data$ID ==i & data$Day==1] = "t5"
+  data$Time[data$ID ==i & data$Day==1 & data$trial.index<(0.8* length(data$trial.index[data$Day==1 & data$ID==i])) ] = "t4"
+  data$Time[data$ID ==i & data$Day==1 & data$trial.index<(0.6* length(data$trial.index[data$Day==1 & data$ID==i])) ] = "t3"
+  data$Time[data$ID ==i & data$Day==1 & data$trial.index<(0.4* length(data$trial.index[data$Day==1 & data$ID==i])) ] = "t2"
+  data$Time[data$ID ==i & data$Day==1 & data$trial.index<(0.2* length(data$trial.index[data$Day==1 & data$ID==i])) ] = "t1"
    
-  EXP$Time[EXP$ID ==i & EXP$Day==2 & EXP$trial.index<length(EXP$trial.index[EXP$Day==2 & EXP$ID==i]) ] = "t5"
-  EXP$Time[EXP$ID ==i & EXP$Day==2 & EXP$trial.index<(0.80* length(EXP$trial.index[EXP$Day==1 & EXP$ID==i])) ] = "t4"
-  EXP$Time[EXP$ID ==i & EXP$Day==2 & EXP$trial.index<(0.60* length(EXP$trial.index[EXP$Day==1 & EXP$ID==i])) ] = "t3"
-  EXP$Time[EXP$ID ==i & EXP$Day==2 & EXP$trial.index<(0.40* length(EXP$trial.index[EXP$Day==2 & EXP$ID==i])) ] = "t2"
-  EXP$Time[EXP$ID ==i & EXP$Day==2 & EXP$trial.index<(0.20* length(EXP$trial.index[EXP$Day==2 & EXP$ID==i])) ] = "t1"
+  data$Time[data$ID ==i & data$Day==2] = "t5"
+  data$Time[data$ID ==i & data$Day==2 & data$trial.index<(0.8* length(data$trial.index[data$Day==2 & data$ID==i])) ] = "t4"
+  data$Time[data$ID ==i & data$Day==2 & data$trial.index<(0.6* length(data$trial.index[data$Day==2 & data$ID==i])) ] = "t3"
+  data$Time[data$ID ==i & data$Day==2 & data$trial.index<(0.4* length(data$trial.index[data$Day==2 & data$ID==i])) ] = "t2"
+  data$Time[data$ID ==i & data$Day==2 & data$trial.index<(0.2* length(data$trial.index[data$Day==2 & data$ID==i])) ] = "t1"
 }
+
+length(data$Time[is.na(data$Time)])
+
+#let's create a dataframe with the Acc prop_correct per ID, Time, Day, Condition and Stim
+
+EXP <- group_by(data, Condition, Day, Time, ID) %>%
+  summarise(
+    count = n(),
+    Acc = mean(prop_correct, na.rm = TRUE)
+  )
+
+EXP <- as.data.frame(EXP)
+EXP = subset(EXP, select = -c(count))
+
+### look at OUTLIERS: people who have 0% accuracy probably weren't paying attention!
+summary(EXP$Acc)
+
+outl <- EXP %>%
+  group_by(Condition, Time) %>%
+  identify_outliers(Acc)
+outl
+
+outliers <- boxplot(EXP$prop_correct, plot=FALSE)$out
+ 
+#maybe useful to remove? If they are having extremely low accuracy scores, that is a bit strange 
+outl$Acc[outl$is.extreme==TRUE]
+#remove under 3
+EXP <-  EXP[!EXP$Acc<0.3,]
 
 ```
 
 ```{r}
-### mixed- design ANOVA computed on weighted accuracy scores (prop.correct) with HCL/LCL (condition) and Time (t1, t2 etc) as within-subject factors. 
+######## mixed- design ANOVA computed on weighted accuracy scores (prop.correct) with HCL/LCL (condition) and Time (t1, t2 etc) as within-subject factors. 
 #we look at main effect e.g. t1>t4 and condxtime interaction
 
+# we want to compare the Accs of groups
+
+# after doing this with Condition * Time, also look at Condition * Day: Day perhaps interesting 
+
+# set factors
+EXP$Day <- as.factor(EXP$Day)
+EXP$Time <- as.factor(EXP$Time)
+EXP$Condition <- as.factor(EXP$Condition)
+EXP$Stim <- as.factor(EXP$Stim)
+EXP$ID <- as.factor(EXP$ID)
+ 
+
+#raw visualisation
+two_w <- lm(Acc~Condition , data=EXP)
+emmeans1<- emmeans(two_w, pairwise ~ Condition, adjust ="fdr", type = "response")
+emmean_dataframe <- summary(emmeans1)$emmeans
+
+pl<- ggplot(EXP, aes(x= Condition, y = Acc))+
+    geom_flat_violin(aes(fill=Condition),position = position_nudge(x =.2, y = 0), alpha=.5, adjust = 1.5, colour = NA)+
+  geom_boxplot(aes(x = Condition, y = Acc, fill = Condition), outlier.shape=NA, alpha= .45, width = .1, colour = "black") +
+   geom_point(data= emmean_dataframe, aes(x =Condition, y = emmean, fill=Condition), position= position_dodge(0.1), size=4)+
+    theme(
+      legend.key.size=unit(1.3, 'cm'),
+      legend.text=element_text(size=13),
+      plot.title = element_text(size=rel(2)),
+      panel.border = element_blank(),
+      panel.background = element_blank(),
+      axis.line = element_line(colour = "black"),
+      panel.grid.major.y = element_line( size=.1, color="#dedede" ),
+      axis.text.x=element_text(size=rel(1.5)),
+      axis.title.y=element_text(size=rel(1.4)),
+      axis.title.x = element_blank())
+
+two_w <- lm(Acc~Condition *Time, data=EXP)
+emmeans1<- emmeans(two_w, pairwise ~ Condition *Time, adjust ="fdr", type = "response")
+emmean_dataframe <- summary(emmeans1)$emmeans
+
+pl<- ggplot(EXP, aes(x= Time, y = Acc))+
+    geom_flat_violin(aes(fill=Condition),position = position_nudge(x =.2, y = 0), alpha=.5, adjust = 1.5, colour = NA)+
+  geom_boxplot(aes(x = Time, y = Acc, fill = Condition), outlier.shape=NA, alpha= .45, width = .1, colour = "black") +
+   geom_point(data= emmean_dataframe, aes(x =Time, y = emmean, fill=Condition), position= position_dodge(0.1), size=4)+
+    theme(
+      legend.key.size=unit(1.3, 'cm'),
+      legend.text=element_text(size=13),
+      plot.title = element_text(size=rel(2)),
+      panel.border = element_blank(),
+      panel.background = element_blank(),
+      axis.line = element_line(colour = "black"),
+      panel.grid.major.y = element_line( size=.1, color="#dedede" ),
+      axis.text.x=element_text(size=rel(1.5)),
+      axis.title.y=element_text(size=rel(1.4)),
+      axis.title.x = element_blank())
+
+
+
+### ASSUMPTIONS ####
+# OUTLIERS
+EXP %>%
+  group_by(Condition, Time) %>%
+  identify_outliers(Acc)
+ outliers <- boxplot(EXP$prop_correct, plot=FALSE)$out
+
+# NORMALITY
+EXP %>%
+  group_by(Condition, Time) %>%
+  shapiro_test(Acc)
+
+ggqqplot(EXP, "Acc", ggtheme = theme_bw()) +
+  facet_grid(Time ~ Condition)
+
+# HOMOGENEITY OF VARIANCE
+box_m(EXP[, 'Acc', drop=FALSE], EXP$Condition)
+
+#SPHERICITY: in anova_test
+res.aov <- anova_test(data=EXP, dv= Acc, wid= ID, within= c(Condition, Time, Day))
+
+
+library(rstatix)
+anova_test(data=EXP, dv=Acc, wid=ID, within=c(Condition, Time, Day))
+
+
+# summary statistics
+sum <- group_by(EXP, Time, Condition) %>%
+  summarise(
+    count = n(),
+    Acc = mean(Acc, na.rm = TRUE)
+  )
+
+# boxplot visualisation
+bxp <- ggboxplot(
+  EXP, x = "Time", y = "Acc",
+  color = "Condition", palette = "jco"
+  )
+
+#TEST
+formula <- lmer('Acc ~ Time * Condition + (1|ID)', data= EXP)
+two_w <- lm(Acc~Condition * Time, data=EXP)
+emmeans1<- emmeans(two_w, pairwise ~ Condition * Time, adjust ="fdr", type = "response")
+emmean_dataframe <- summary(emmeans1)$emmeans
+
+Anova(two_w, type='III')
+summary(emmeans1)
+
+res.aov2 <- aov(Acc ~ Condition*Time, data= EXP)
+summary(res.aov2)
+
+dvm <- with(EXP, cbind(dv[myfactor=='f1']))
+mlm<-lm(EXP$Acc~1)
+aov<- Anova ()
+
+## data table
+my_sum <- EXP %>%
+  group_by(Time, Condition) %>%
+  summarise(
+    n = n(), 
+    mean = mean(Acc),
+    sd = sd(Acc)
+  ) %>%
+  mutate( se = sd/sqrt(n)) %>%
+  mutate( ic=se * qt((1-0.05)/2 + .5, n-1))
+print(my_sum)
+## plot 
+### using standard error
+pl <-ggplot(my_sum) + 
+  geom_bar( aes(x=Time, y=mean, fill= Condition), stat="identity", alpha=0.5) + 
+  geom_errorbar( aes(x=Time, ymin=mean-se, ymax=mean+se), width=0.4, colour="white", alpha=0.9, size=1.5) +
+  ggtitle("Experiment 1: Overall mean Acc - using standard error")
+### using confidence interval
+pl <- ggplot(my_sum) +
+  geom_bar( aes(x=Time, y=mean, fill= Condition), stat="identity", alpha=0.5) +
+  geom_errorbar( aes(x=Time, ymin=mean-ic, ymax=mean+ic), width=0.4, colour="white", alpha=0.9, size=1.5) +
+  ggtitle("Experiment 1: Overall Overall mean Acc - using confidence interval")
+
+
+
+
+#### COMPARE DAY 1 to DAY 2 #####
+
+
+##look at Time * Day
+formula <- lmer('Acc ~ Time * Day + (1|ID)', data= EXP)
+two_w <- lm(Acc~Time*Day, data=EXP)
+emmeans1<- emmeans(two_w, pairwise ~ Time*Day, adjust ="fdr", type = "response")
+emmean_dataframe <- summary(emmeans1)$emmeans
+
+ Anova(two_w, type='III')
+summary(emmeans1)
+
+my_sum <- EXP %>%
+  group_by(Time, Day) %>%
+  summarise(
+    n = n(), 
+    mean = mean(Acc),
+    sd = sd(Acc)
+  ) %>%
+  mutate( se = sd/sqrt(n)) %>%
+  mutate( ic=se * qt((1-0.05)/2 + .5, n-1))
+print(my_sum)
+#plot using standard error
+pl <-ggplot(my_sum) + 
+  geom_bar( aes(x=Time, y=mean, fill= Day), stat="identity", alpha=0.5) + 
+  geom_errorbar( aes(x=Time, ymin=mean-se, ymax=mean+se), width=0.4, colour="white", alpha=0.9, size=1.5) +
+  ggtitle("Experiment 1: Overall mean Acc - using standard error")
+
+##look at Condition * Day
+formula <- lmer('Acc ~ Condition * Day + (1|ID)', data= EXP)
+two_w <- lm(Acc~Condition*Day, data=EXP)
+emmeans1<- emmeans(two_w, pairwise ~ Condition*Day, adjust ="fdr", type = "response")
+emmean_dataframe <- summary(emmeans1)$emmeans
+
+ Anova(two_w, type='III')
+summary(emmeans1)
+
+my_sum <- EXP %>%
+  group_by(Condition, Day) %>%
+  summarise(
+    n = n(), 
+    mean = mean(Acc),
+    sd = sd(Acc)
+  ) %>%
+  mutate( se = sd/sqrt(n)) %>%
+  mutate( ic=se * qt((1-0.05)/2 + .5, n-1))
+print(my_sum)
+#plot using standard error
+pl <-ggplot(my_sum) + 
+  geom_bar( aes(x=Day, y=mean, fill= Condition), stat="identity", alpha=0.5) + 
+  geom_errorbar( aes(x=Day, ymin=mean-se, ymax=mean+se), width=0.4, colour="white", alpha=0.9, size=1.5) +
+  ggtitle("Experiment 1: Overall mean Acc - using standard error")
+
+pl<- ggplot(EXP, aes(x= Day, y = Acc))+
+    geom_flat_violin(aes(fill=Condition),position = position_nudge(x =.2, y = 0), alpha=.5, adjust = 1.5, colour = NA)+
+  geom_boxplot(aes(x = Day, y = Acc, fill = Condition), outlier.shape=NA, alpha= .45, width = .1, colour = "black") +
+   geom_point(data= emmean_dataframe, aes(x =Day, y = emmean, fill=Condition), position= position_dodge(0.1), size=4)+
+    theme(
+      legend.key.size=unit(1.3, 'cm'),
+      legend.text=element_text(size=13),
+      plot.title = element_text(size=rel(2)),
+      panel.border = element_blank(),
+      panel.background = element_blank(),
+      axis.line = element_line(colour = "black"),
+      panel.grid.major.y = element_line( size=.1, color="#dedede" ),
+      axis.text.x=element_text(size=rel(1.5)),
+      axis.title.y=element_text(size=rel(1.4)),
+      axis.title.x = element_blank())
+
+#######
 
 #tukey's post-hoc analyses: see if performance decreased faster in HCL compared to LCL
+formula <- lm(Acc ~ Time*Condition, data= EXP)
+exp.av <- aov(formula)
+summary(exp.av)
+
+tukey.test <- TukeyHSD(exp.av)
+tukey.test$Time #t1 > t4 & t5, t2 >t4 & t5!
+
+# components (color/pic): mixed-D ANOVA Stim * Condition * Time
 
 ```
 
@@ -107,14 +351,14 @@ for (i in 1:97) {
 # count 'accuracy' (0 or 1) in LCL vs HCL
 sum(EXP$accuracy[EXP$Condition=="HCL"])
 sum(EXP$accuracy[EXP$Condition=="LCL"])
-mean(EXP$accuracy[EXP$Condition=="HCL"])
-mean(EXP$accuracy[EXP$Condition=="LCL"])
+Acc(EXP$accuracy[EXP$Condition=="HCL"])
+Acc(EXP$accuracy[EXP$Condition=="LCL"])
 
 EXP$Day <- as.factor(EXP$Day)
 EXP$Condition <- as.factor(EXP$Condition)
 EXP$ID <- as.factor(EXP$ID)
 
-#create mean prop_correct per participant??
+#create Acc prop_correct per participant??
 
 # #make dataframe with 1 measure per condition
 # VAS1<- VAS1[VAS$Question.Key=='0-quantised',]
@@ -131,16 +375,16 @@ summary(fit)
 fit <- lm(prop_correct~Condition * Day, data=EXP)
 summary(fit)
 
-emmeans1 <- emmeans(fit, pairwise ~ Condition * Day, adjust ="fdr", type = "response")
-two_way_emm <- summary(emmeans1)$emmeans
+emAccs1 <- emAccs(fit, pairwise ~ Condition * Day, adjust ="fdr", type = "response")
+two_way_emm <- summary(emAccs1)$emAccs
 two_way_plotf(EXP, two_way_emm, "prop_correct")
 
 # Condition
 fit <- lm(prop_correct~Condition, data=EXP)
 summary(fit)
 
-emmeans2 <- emmeans(fit, pairwise ~ Condition, adjust ="fdr", type = "response")
-one_way_emm <- summary(emmeans2)$emmeans
+emAccs2 <- emAccs(fit, pairwise ~ Condition, adjust ="fdr", type = "response")
+one_way_emm <- summary(emAccs2)$emAccs
 one_way_plotf(EXP, one_way_emm, "prop_correct")
 
 # EXP DAY 1
