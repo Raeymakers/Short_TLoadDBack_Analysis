@@ -1,5 +1,5 @@
 ---
-title: "PVT_VAS-f_analysis"
+title: "PVT_ANALYSIS"
 author: "Sofie Raeymakers"
 date: "5/3/2022"
 output: html_document
@@ -40,6 +40,8 @@ setwd(Dir)
 ```
 
 ```{r}
+
+# PVT is a measure of vigilance. 
 
 #Download PVT data (this datafile is made in 'preprocessing')
 PVT <- read.csv(paste0(Dir, "PVT.csv"), header = TRUE, sep = )
@@ -132,8 +134,6 @@ sum
 #test 1 day 2 - test 2 day 2 LCL
 2.76 - 2.63 #  0.13: slower after TloadDback
 
-ggplot(sum, aes(x=Condition, y=mean)) + 
-  geom_violin()
 
 
 ### REPEATED-MEASURES ANOVA TO COMPARE TIREDNESS BETWEEN DAYS: 
@@ -190,6 +190,7 @@ emmean_dataframe <- summary(emmeans1)$emmeans
 Anova(two_w, type='III')
 summary(emmeans1)
 
+### Borrogan also looked at RT coefficient of variation CV=SD/Mean 
 
 ### PLOT: 
 

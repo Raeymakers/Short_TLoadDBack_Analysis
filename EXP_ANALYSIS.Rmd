@@ -1,0 +1,152 @@
+---
+title: "EXP_ANALYSIS"
+author: "Sofie Raeymakers"
+date: "7/1/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+rm(list = ls()) # Clear environment
+cat("\014") # Clear console
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r message=FALSE, warning = FALSE}
+##### Set environment #####
+
+library(tidyverse)
+library(effects)
+library(emmeans)
+library(data.table)
+library(dplyr)
+library(ggplot2)
+library(MuMIn)
+library(effsize)
+library(reshape2)
+library(cowplot)
+library(car)
+library(ggpubr)
+
+# Get and declare functions
+#Set working directory to the folder in which all CSV files are located
+
+setwd(dirname(rstudioapi::getActiveDocumentContext()$path))
+source("C:/Users/ASUSTeK/OneDrive/Documenten/Github/Short_TLoadDBack/functions.R") # This is a file in the same directory where you can stash your functions so you can save them there and have them together
+
+Dir = "C:/Users/ASUSTeK/OneDrive/Documenten/Github/Short_TLoadDBack/Data/"
+setwd(Dir)
+#Download EXP data
+EXP <- read.csv(paste0(Dir, "EXP.csv"), header = TRUE, sep = )
+
+```
+
+
+```{r}
+### CHECKING TLOADNBACK#
+
+
+##### OBJECTIVE CF ##### 
+#we compute the evolution of performance during TloadDback
+# weighted accuracy (prop.correct): t1 and t2 is first and second 20%, t3 and t4 last 20% (with 20% in middle)
+
+#we remove rows that have prop.correct == NA 'because these were the ERROR' trials
+EXP <- EXP[!is.na(EXP$prop_correct),]
+
+# create a trial.index that goes from 1 to ..
+for (i in 1:97) {
+  EXP$trial.index[EXP$ID==i]= 1:length(unique(EXP$Trial.Index[EXP$ID ==i]))
+}
+
+#remove some unnecessary rows
+EXP = subset(EXP, select = -c(Local.Date, Participant.Private.ID, Task.Name, Accuracy_Level, Time.Elapsed, Trial.Index))
+
+# create var Time that say if it is part of t1, t2, t3 or t4
+# not every participant equal amount of trials, because dependent on their speed/accuracy
+# we need to work with percents. 
+length(unique(EXP$trial.index[EXP$ID ==1])) #remember, 2 days! so this is the highest amount of trials
+count_index <- EXP %>% count(ID)
+count_index$n[count_index$ID==1] #total amount of trials for this participant
+
+# amount will be different depending on the day, so calculate per day!
+# each t has 20%, with 20% empty in the middle
+
+for (i in 1:97) {
+  EXP$Time[EXP$ID ==i & EXP$Day==1 & EXP$trial.index<length(EXP$trial.index[EXP$Day==1 & EXP$ID==i]) ] = "t5"
+  EXP$Time[EXP$ID ==i & EXP$Day==1 & EXP$trial.index<(0.80* length(EXP$trial.index[EXP$Day==1 & EXP$ID==i])) ] = "t4"
+  EXP$Time[EXP$ID ==i & EXP$Day==1 & EXP$trial.index<(0.60* length(EXP$trial.index[EXP$Day==1 & EXP$ID==i])) ] = "t3"
+  EXP$Time[EXP$ID ==i & EXP$Day==1 & EXP$trial.index<(0.40* length(EXP$trial.index[EXP$Day==1 & EXP$ID==i])) ] = "t2"
+  EXP$Time[EXP$ID ==i & EXP$Day==1 & EXP$trial.index<(0.20* length(EXP$trial.index[EXP$Day==1 & EXP$ID==i])) ] = "t1"
+   
+  EXP$Time[EXP$ID ==i & EXP$Day==2 & EXP$trial.index<length(EXP$trial.index[EXP$Day==2 & EXP$ID==i]) ] = "t5"
+  EXP$Time[EXP$ID ==i & EXP$Day==2 & EXP$trial.index<(0.80* length(EXP$trial.index[EXP$Day==1 & EXP$ID==i])) ] = "t4"
+  EXP$Time[EXP$ID ==i & EXP$Day==2 & EXP$trial.index<(0.60* length(EXP$trial.index[EXP$Day==1 & EXP$ID==i])) ] = "t3"
+  EXP$Time[EXP$ID ==i & EXP$Day==2 & EXP$trial.index<(0.40* length(EXP$trial.index[EXP$Day==2 & EXP$ID==i])) ] = "t2"
+  EXP$Time[EXP$ID ==i & EXP$Day==2 & EXP$trial.index<(0.20* length(EXP$trial.index[EXP$Day==2 & EXP$ID==i])) ] = "t1"
+}
+
+```
+
+```{r}
+### mixed- design ANOVA computed on weighted accuracy scores (prop.correct) with HCL/LCL (condition) and Time (t1, t2 etc) as within-subject factors. 
+#we look at main effect e.g. t1>t4 and condxtime interaction
+
+
+#tukey's post-hoc analyses: see if performance decreased faster in HCL compared to LCL
+
+```
+
+```{r}
+
+# Addition analysis: assess seperately evoluiton within time for 2 components of the task: pics are big/small with  no WM component whereas balss have 8 different colors + n-back. which one is harder? We made a weighted accuracy where  
+# mixed-design ANOVA with component (ball vs pic) and condition (HCL/LCL) and Time (t1-4) as within-subj factors. 
+# interaction and main effect
+# to indicate higher complexity WMM component (pics) compared to balls 
+```
+
+```{r}
+# count 'accuracy' (0 or 1) in LCL vs HCL
+sum(EXP$accuracy[EXP$Condition=="HCL"])
+sum(EXP$accuracy[EXP$Condition=="LCL"])
+mean(EXP$accuracy[EXP$Condition=="HCL"])
+mean(EXP$accuracy[EXP$Condition=="LCL"])
+
+EXP$Day <- as.factor(EXP$Day)
+EXP$Condition <- as.factor(EXP$Condition)
+EXP$ID <- as.factor(EXP$ID)
+
+#create mean prop_correct per participant??
+
+# #make dataframe with 1 measure per condition
+# VAS1<- VAS1[VAS$Question.Key=='0-quantised',]
+
+#accuracy
+fit <-lm(accuracy~Condition * Day, data=EXP)
+summary(fit)
+
+fit <- lm(accuracy~Condition , data=EXP)
+summary(fit)
+
+## proportion correct
+# Condition * Day
+fit <- lm(prop_correct~Condition * Day, data=EXP)
+summary(fit)
+
+emmeans1 <- emmeans(fit, pairwise ~ Condition * Day, adjust ="fdr", type = "response")
+two_way_emm <- summary(emmeans1)$emmeans
+two_way_plotf(EXP, two_way_emm, "prop_correct")
+
+# Condition
+fit <- lm(prop_correct~Condition, data=EXP)
+summary(fit)
+
+emmeans2 <- emmeans(fit, pairwise ~ Condition, adjust ="fdr", type = "response")
+one_way_emm <- summary(emmeans2)$emmeans
+one_way_plotf(EXP, one_way_emm, "prop_correct")
+
+# EXP DAY 1
+EXP <- EXP[!(EXP$Day==2),]
+
+# EXP DAY 2
+EXP <- EXP[!(EXP$Day==1),]
+
+```

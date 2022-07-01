@@ -66,8 +66,8 @@ EXP$ID <- as.factor(EXP$ID)
 
 #create mean prop_correct per participant??
 
-#make dataframe with 1 measure per condition
-VAS1<- VAS1[VAS$Question.Key=='0-quantised',]
+# #make dataframe with 1 measure per condition
+# VAS1<- VAS1[VAS$Question.Key=='0-quantised',]
 
 #accuracy
 fit <-lm(accuracy~Condition * Day, data=EXP)
@@ -104,6 +104,8 @@ EXP <- EXP[!(EXP$Day==1),]
 ```{r}
 #### CLEANING PVT ####
 
+# we want to compare PVT before and after TloadDback. Let's start by looking at day 1
+
 #PVT day 1
 PVT1 <- PVT[!(PVT$Day==2),]
 
@@ -123,53 +125,61 @@ hist(PVT1$RT,
      main = "Histogram of RT",
      breaks = sqrt(nrow(PVT1)))
 
-print('upper 97.5% bound')
-quantile (PVT1$RT, 0.975)
+# Borrogan: over 500 ms is considered 'lapse'
+ PVT1 <- subset(PVT1, RT < 500)
+
+# print('upper 97.5% bound')
+# quantile (PVT1$RT, 0.975)
+# 
+# 
+# # remove RT over 2000 millisec
+# PVT1 <- subset(PVT1, RT < 3800)
+# d<-melt(data.frame(rt=c(PVT1$RT)))
+# ggplot(d, aes(x = variable, y = value, fill=variable))+
+#   geom_flat_violin(position = position_nudge(x = .2, y = 0),adjust =2)+
+#   geom_point(position=position_jitter(width=.15), size=0.25)+
+#   ylab('rt')+xlab('amount')+coord_flip()+theme_cowplot()+
+#   geom_boxplot(width= .10, outlier.shape = NA)+
+#   theme(legend.position="none")+
+#   guides(fill=FALSE)+
+#   ggtitle("reaction times < 3800 millisec")
+# 
+# summary(PVT1$RT)
+# hist(PVT1$RT,
+#      xlab = "RT",
+#      main = "Histogram of RT",
+#      breaks = sqrt(nrow(PVT1)))
 
 
-# remove RT over 2000 millisec
-PVT1 <- subset(PVT1, RT < 3800)
-d<-melt(data.frame(rt=c(PVT1$RT)))
-ggplot(d, aes(x = variable, y = value, fill=variable))+
-  geom_flat_violin(position = position_nudge(x = .2, y = 0),adjust =2)+
-  geom_point(position=position_jitter(width=.15), size=0.25)+
-  ylab('rt')+xlab('amount')+coord_flip()+theme_cowplot()+
-  geom_boxplot(width= .10, outlier.shape = NA)+
-  theme(legend.position="none")+
-  guides(fill=FALSE)+
-  ggtitle("reaction times < 3800 millisec")
-
-summary(PVT1$RT)
-hist(PVT1$RT,
-     xlab = "RT",
-     main = "Histogram of RT",
-     breaks = sqrt(nrow(PVT1)))
-
-
-out<-boxplot.stats(PVT1$RT)$out#outliers
-out_ind<-which(PVT1$RT %in% c(out))#row numbers that contain outliers
-boxplot(PVT1$RT, ylab='rt') #boxplot
-
-#remove outliers: sign that they were not paying attention
-outliers <- boxplot(PVT1$RT, plot=FALSE)$out
-PVT1<- PVT1[-which(PVT1$RT %in% outliers),]
+# out<-boxplot.stats(PVT1$RT)$out#outliers
+# out_ind<-which(PVT1$RT %in% c(out))#row numbers that contain outliers
+# boxplot(PVT1$RT, ylab='rt') #boxplot
+# 
+# #remove outliers: sign that they were not paying attention
+# outliers <- boxplot(PVT1$RT, plot=FALSE)$out
+# PVT1<- PVT1[-which(PVT1$RT %in% outliers),]
 
 # check normality of PVT1 RT
 qqPlot(PVT1$RT)
 
-# log transform data
-PVT1$RT = log(PVT1$RT)
-
-qqPlot(PVT1$RT)
+# 
+# 
+# # log transform data
+# PVT1$RT = log(PVT1$RT)
+# 
+# qqPlot(PVT1$RT)
 ```
 
 ```{r}
 
 ################ PVT ################
 
+# https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3197786/: over 500 ms is considered 'lapse'
+ PVT <- subset(PVT, RT < 600)
+
 ### Do like Borrogan : mean 1/RT
 
-PVT$RT <- 1/(PVT$RT/1000) #1/RT
+# PVT$RT <- 1/(PVT$RT/1000) #1/RT
 
 d<-melt(data.frame(RT=c(PVT$RT))) # we melt to wide format 
 ggplot(d, aes(x = variable, y = value, fill=variable))+
@@ -178,7 +188,9 @@ ggplot(d, aes(x = variable, y = value, fill=variable))+
   theme_cowplot()+
   geom_point(position=position_jitter(width=.15), size=2)+
   geom_boxplot(width= .10, outlier.shape = NA)+
-  theme(legend.position="none")
+  theme(legend.position="reciprocal RT")
+
+qqPlot(PVT$RT)
 
 # we have 97 iDs. Each participant is in either LCL or HCL
 for (i in 1:97) {
@@ -192,48 +204,24 @@ for (i in 1:97) {
 #WRONG! change this line! take 1 measure per ID. New dataframe??
 # PVT_c <- PVT[!duplicated(PVT$MeanRT), ]
 
-length(unique(PVT_c$MeanRT))
+length(unique(PVT$MeanRT))
 #388
 97*4
 
-glimpse(PVT_c)
+glimpse(PVT)
 
-
-
-#plot reaction times with raincloudplot
-d<-melt(data.frame(rt=c(PVT_c$MeanRT))) # we melt to wide format 
-ggplot(d, aes(x = variable, y = value, fill=variable))+
-  geom_flat_violin(position = position_nudge(x = .2, y = 0),adjust =2)+
-  ylab('MeanRT')+xlab('amount')+coord_flip()+theme_cowplot()+
-  geom_point(position=position_jitter(width=.15), size=2)+
-  geom_boxplot(width= .10, outlier.shape = NA)+
-  theme(legend.position="none")+
-  ggtitle("reciprocal reaction times")
-
-summary(PVT_c$MeanRT)
-hist(PVT_c$MeanRT,
-     xlab = "MeanRT",
-     main = "Histogram of MeanRT",
-     breaks = sqrt(nrow(PVT)))
-
-qqPlot(PVT_c$MeanRT)
-
-
-```
-
-```{r}
 
 # make factors
-PVT_c$Day <- factor(PVT_c$Day)
-PVT_c$Test <- factor(PVT_c$Test)
-PVT_c$Condition <- factor(PVT_c$Condition)
+PVT$Day <- factor(PVT$Day)
+PVT$Test <- factor(PVT$Test)
+PVT$Condition <- factor(PVT$Condition)
 
-levels(PVT_c$Condition)
+levels(PVT$Condition)
 
 # formula <- lm( PVT_c$MeanRT ~ PVT_c$Condition * PVT_c$Day * PVT_c$Test + 1|PVT_c$ID)
 
 # summarize data per group
-sum <- group_by(PVT_c, Condition, Test, Day) %>%
+sum <- group_by(PVT, Condition, Test, Day) %>%
   summarise(
     count = n(),
     mean = mean(MeanRT, na.rm = TRUE),
@@ -241,14 +229,16 @@ sum <- group_by(PVT_c, Condition, Test, Day) %>%
   )
 sum 
 
-
-
 ggplot(sum, aes(x=Condition, y=mean)) + 
   geom_violin()
-ggplot(PVT_c, aes(x=Condition, y=MeanRT)) + 
-  geom_violin()
 
-ggboxplot(PVT_c, x = "Condition", y = "MeanRT", 
+
+
+#### DAY 1 ####
+
+#PVT day 1
+PVT1 <- PVT[!(PVT$Day==2),]
+ggboxplot(PVT1, x = "Condition", y = "MeanRT", 
           color = "Condition", palette = c("#00AFBB", "#E7B800", "#FC4E07"),
           ylab = "RT", xlab = "Condition")
 
@@ -303,7 +293,7 @@ VAS1<- VAS1[VAS$Question.Key=='0-quantised',]
 
 # correcting for baseline: VAS1C$Diff as VAS1 op test 2 - test 1 per dag
 for (i in 1:97) {
-  VAS1$Diff[VAS1$ID==i & VAS1$Day==1] = (VAS1$Sum[VAS1$Test==2 & VAS1$ID==i & VAS1$Day==1]- VAS1$Sum[VAS1$Test==1 & VAS1$ID==i & VAS1$Day==1])
+  VAS1$Diff[VAS1$ID==i] = (VAS1$Sum[VAS1$Test==2 & VAS1$ID==i & VAS1$Day==1]- VAS1$Sum[VAS1$Test==1 & VAS1$ID==i & VAS1$Day==1])
 }
 
 sum(VAS1$Diff[VAS1$Condition=="HCL"])
