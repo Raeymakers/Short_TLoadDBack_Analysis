@@ -71,21 +71,20 @@ count_index$n[count_index$ID==1] #total amount of trials for this participant (d
 # amount of trials differ depending on the day, so calculate per day!
 # each t has 20%, with 20% empty in the middle (t3)
 for (i in 1:97) {
-  data$Time[data$ID ==i & data$Day==1] = "t5" # day 1
-  data$Time[data$ID ==i & data$Day==1 & data$trial.index<(0.8* length(data$trial.index[data$Day==1 & data$ID==i])) ] = "t4" # less than 80% of the numver of trials on day 1 for that ppt
-  data$Time[data$ID ==i & data$Day==1 & data$trial.index<(0.6* length(data$trial.index[data$Day==1 & data$ID==i])) ] = "t3"
-  data$Time[data$ID ==i & data$Day==1 & data$trial.index<(0.4* length(data$trial.index[data$Day==1 & data$ID==i])) ] = "t2"
-  data$Time[data$ID ==i & data$Day==1 & data$trial.index<(0.2* length(data$trial.index[data$Day==1 & data$ID==i])) ] = "t1"
+  data$Time[data$ID ==i & data$Day==1] = "t3" # day 1
+  # data$Time[data$ID ==i & data$Day==1 & data$trial.index<(0.8* length(data$trial.index[data$Day==1 & data$ID==i])) ] = "t4" # less than 80% of the numver of trials on day 1 for that ppt
+  data$Time[data$ID ==i & data$Day==1 & data$trial.index<(0.6* length(data$trial.index[data$Day==1 & data$ID==i])) ] = "t2"
+  data$Time[data$ID ==i & data$Day==1 & data$trial.index<(0.4* length(data$trial.index[data$Day==1 & data$ID==i])) ] = "t1"
+  # data$Time[data$ID ==i & data$Day==1 & data$trial.index<(0.2* length(data$trial.index[data$Day==1 & data$ID==i])) ] = "t1"
    
-  data$Time[data$ID ==i & data$Day==2] = "t5" # day 2
-  data$Time[data$ID ==i & data$Day==2 & data$trial.index<(0.8* length(data$trial.index[data$Day==2 & data$ID==i])) ] = "t4"
-  data$Time[data$ID ==i & data$Day==2 & data$trial.index<(0.6* length(data$trial.index[data$Day==2 & data$ID==i])) ] = "t3"
-  data$Time[data$ID ==i & data$Day==2 & data$trial.index<(0.4* length(data$trial.index[data$Day==2 & data$ID==i])) ] = "t2"
-  data$Time[data$ID ==i & data$Day==2 & data$trial.index<(0.2* length(data$trial.index[data$Day==2 & data$ID==i])) ] = "t1"
+  data$Time[data$ID ==i & data$Day==2] = "t3" # day 2
+  # data$Time[data$ID ==i & data$Day==2 & data$trial.index<(0.8* length(data$trial.index[data$Day==2 & data$ID==i])) ] = "t4"
+  data$Time[data$ID ==i & data$Day==2 & data$trial.index<(0.6* length(data$trial.index[data$Day==2 & data$ID==i])) ] = "t2"
+  data$Time[data$ID ==i & data$Day==2 & data$trial.index<(0.4* length(data$trial.index[data$Day==2 & data$ID==i])) ] = "t1"
+  # data$Time[data$ID ==i & data$Day==2 & data$trial.index<(0.2* length(data$trial.index[data$Day==2 & data$ID==i])) ] = "t1"
 }
 
 length(data$Time[is.na(data$Time)]) #N1s, should be 0
-
 
 ```
 
@@ -263,25 +262,19 @@ pl
 emmean_dataframe# LCL clearly has higher Acc: 0.89 for LCL and 0.62 for HCL
 
 
-```
-
-```{r}
-
 #### COMPARE DAY 1 to DAY 2 #####
 
-# after doing this with Condition * Time, also look at Condition * Day: Day perhaps interesting 
-
-##look at Time * Day
-formula <- lmer('Acc ~ Time * Day + (1|ID)', data= EXP)
-two_w <- lm(Acc~Time*Day, data=EXP)
-emmeans1<- emmeans(two_w, pairwise ~ Time*Day, adjust ="fdr", type = "response")
+# Condition * Day: Day perhaps interesting 
+two_w <- glmer(Acc ~ Condition * Day + (1 | ID), weights = count,
+   family = binomial, data = EXP)
+emmeans1<- emmeans(two_w, pairwise ~ Condition * Day, adjust ="fdr", type = "response")
 emmean_dataframe <- summary(emmeans1)$emmeans
 
- Anova(two_w, type='III')
+Anova(two_w, type='III')
 summary(emmeans1)
-
+  
 my_sum <- EXP %>%
-  group_by(Time, Day) %>%
+  group_by(Day, Condition) %>%
   summarise(
     n = n(), 
     mean = mean(Acc),
@@ -289,42 +282,18 @@ my_sum <- EXP %>%
   ) %>%
   mutate( se = sd/sqrt(n)) %>%
   mutate( ic=se * qt((1-0.05)/2 + .5, n-1))
-print(my_sum)
-#plot using standard error
-pl <-ggplot(my_sum) + 
-  geom_bar( aes(x=Time, y=mean, fill= Day), stat="identity", alpha=0.5) + 
-  geom_errorbar( aes(x=Time, ymin=mean-se, ymax=mean+se), width=0.4, colour="white", alpha=0.9, size=1.5) +
-  ggtitle("Experiment 1: Overall mean Acc - using standard error")
+my_sum
 
-##look at Condition * Day
-formula <- lmer('Acc ~ Condition * Day + (1|ID)', data= EXP)
-two_w <- lm(Acc~Condition*Day, data=EXP)
-emmeans1<- emmeans(two_w, pairwise ~ Condition*Day, adjust ="fdr", type = "response")
-emmean_dataframe <- summary(emmeans1)$emmeans
+emmean_dataframe$n = my_sum$n
+emmean_dataframe$ic = my_sum$ic
 
- Anova(two_w, type='III')
-summary(emmeans1)
-
-my_sum <- EXP %>%
-  group_by(Condition, Day) %>%
-  summarise(
-    n = n(), 
-    mean = mean(Acc),
-    sd = sd(Acc)
-  ) %>%
-  mutate( se = sd/sqrt(n)) %>%
-  mutate( ic=se * qt((1-0.05)/2 + .5, n-1))
-print(my_sum)
-#plot using standard error
-pl <-ggplot(my_sum) + 
-  geom_bar( aes(x=Day, y=mean, fill= Condition), stat="identity", alpha=0.5) + 
-  geom_errorbar( aes(x=Day, ymin=mean-se, ymax=mean+se), width=0.4, colour="white", alpha=0.9, size=1.5) +
-  ggtitle("Experiment 1: Overall mean Acc - using standard error")
-
-pl<- ggplot(EXP, aes(x= Day, y = Acc))+
-    geom_flat_violin(aes(fill=Condition),position = position_nudge(x =.2, y = 0), alpha=.5, adjust = 1.5, colour = NA)+
-  geom_boxplot(aes(x = Day, y = Acc, fill = Condition), outlier.shape=NA, alpha= .45, width = .1, colour = "black") +
-   geom_point(data= emmean_dataframe, aes(x =Day, y = emmean, fill=Condition), position= position_dodge(0.1), size=4)+
+## Visualisation Condition * Time 
+pl<- ggplot()+
+    geom_flat_violin(data= EXP, aes(x= Day, y= Acc, fill=Condition),position = position_nudge(x =.2, y = 0), alpha=.5, adjust = 1.5, colour = NA)+
+  geom_boxplot(data= EXP, aes(x = Day, y = Acc, fill = Condition), outlier.shape=NA, alpha= .45, width = .1, colour = "black") +
+   geom_point(data= emmean_dataframe, aes(x =Day, y = prob, fill=Condition), position= position_dodge(0.1), size=4)+
+  geom_errorbar( data= emmean_dataframe, aes(x=Day, ymin=prob-SE, ymax=prob+SE), width=0.05, colour="black", alpha=0.9, size=0.05) + #SD error bar 
+  geom_errorbar(data= emmean_dataframe, aes(x=Day, ymin=prob-ic, ymax=prob+ic), width=0.4, colour="red", alpha=0.9, size=0.05) + #C.I.
     theme(
       legend.key.size=unit(1.3, 'cm'),
       legend.text=element_text(size=13),
@@ -336,73 +305,56 @@ pl<- ggplot(EXP, aes(x= Day, y = Acc))+
       axis.text.x=element_text(size=rel(1.5)),
       axis.title.y=element_text(size=rel(1.4)),
       axis.title.x = element_blank())
-
-#######
-
-#tukey's post-hoc analyses: see if performance decreased faster in HCL compared to LCL
-formula <- lm(Acc ~ Time*Condition, data= EXP)
-exp.av <- aov(formula)
-summary(exp.av)
-
-tukey.test <- TukeyHSD(exp.av)
-tukey.test$Time #t1 > t4 & t5, t2 >t4 & t5!
-
-# components (color/pic): mixed-D ANOVA Stim * Condition * Time
+pl # Acc is higher in day 2 for both conditions! 
+emmean_dataframe 
 
 ```
 
 ```{r}
 
-# Addition analysis: assess seperately evoluiton within time for 2 components of the task: pics are big/small with  no WM component whereas balss have 8 different colors + n-back. which one is harder? We made a weighted accuracy where  
+###### components (color/pic): mixed-D ANOVA Stim * Condition * Time ####
+# assess seperately evoluiton within time for 2 components of the task: pics are big/small with  no WM component whereas balss have 8 different colors + n-back. which one is harder? We made a weighted accuracy where  
 # mixed-design ANOVA with component (ball vs pic) and condition (HCL/LCL) and Time (t1-4) as within-subj factors. 
 # interaction and main effect
 # to indicate higher complexity WMM component (pics) compared to balls 
-```
 
-```{r}
-# count 'accuracy' (0 or 1) in LCL vs HCL
-sum(EXP$accuracy[EXP$Condition=="HCL"])
-sum(EXP$accuracy[EXP$Condition=="LCL"])
-Acc(EXP$accuracy[EXP$Condition=="HCL"])
-Acc(EXP$accuracy[EXP$Condition=="LCL"])
+EXP <- group_by(data, Condition, Time, ID, Stim) %>%
+  summarise(
+    count = n(),
+    Acc = mean(accuracy, na.rm = TRUE)
+  )
+EXP <- as.data.frame(EXP)
+head(EXP)
 
-EXP$Day <- as.factor(EXP$Day)
+# set factors
+EXP$Time <- as.factor(EXP$Time)
 EXP$Condition <- as.factor(EXP$Condition)
 EXP$ID <- as.factor(EXP$ID)
+EXP$Stim <- as.factor(EXP$Stim)
 
-#create Acc prop_correct per participant??
+two_w <- glmer(Acc ~ Condition * Time * Stim + (1 | ID), weights = count,
+   family = binomial, data = EXP)
+emmeans1<- emmeans(two_w, pairwise ~ Condition * Time * Stim, adjust ="fdr", type = "response")
+emmean_dataframe <- summary(emmeans1)$emmeans
 
-# #make dataframe with 1 measure per condition
-# VAS1<- VAS1[VAS$Question.Key=='0-quantised',]
+Anova(two_w, type='III')
+summary(emmeans1)
 
-#accuracy
-fit <-lm(accuracy~Condition * Day, data=EXP)
-summary(fit)
+my_sum <- EXP %>%
+  group_by(Time, Stim, Condition) %>%
+  summarise(
+    n = n(), 
+    mean = mean(Acc),
+    sd = sd(Acc)
+  ) %>%
+  mutate( se = sd/sqrt(n)) %>%
+  mutate( ic=se * qt((1-0.05)/2 + .5, n-1))
+my_sum
 
-fit <- lm(accuracy~Condition , data=EXP)
-summary(fit)
+emmean_dataframe$n = my_sum$n
+emmean_dataframe$ic = my_sum$ic
 
-## proportion correct
-# Condition * Day
-fit <- lm(prop_correct~Condition * Day, data=EXP)
-summary(fit)
-
-emAccs1 <- emAccs(fit, pairwise ~ Condition * Day, adjust ="fdr", type = "response")
-two_way_emm <- summary(emAccs1)$emAccs
-two_way_plotf(EXP, two_way_emm, "prop_correct")
-
-# Condition
-fit <- lm(prop_correct~Condition, data=EXP)
-summary(fit)
-
-emAccs2 <- emAccs(fit, pairwise ~ Condition, adjust ="fdr", type = "response")
-one_way_emm <- summary(emAccs2)$emAccs
-one_way_plotf(EXP, one_way_emm, "prop_correct")
-
-# EXP DAY 1
-EXP <- EXP[!(EXP$Day==2),]
-
-# EXP DAY 2
-EXP <- EXP[!(EXP$Day==1),]
 
 ```
+
+proportion correct
