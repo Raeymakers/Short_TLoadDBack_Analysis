@@ -1,0 +1,731 @@
+---
+title: "ALL_TOGETHER"
+author: "Sofie Raeymakers"
+date: "7/6/2022"
+output: html_document
+---
+
+---
+title: "PVT_VAS-f_analysis"
+author: "Sofie Raeymakers"
+date: "5/3/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+rm(list = ls()) # Clear environment
+cat("\014") # Clear console
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r message=FALSE, warning = FALSE}
+##### Set environment #####
+
+library(tidyverse)
+library(effects)
+library(emmeans)
+library(data.table)
+library(dplyr)
+library(lme4)
+library(ggplot2)
+library(MuMIn)
+library(effsize)
+library(reshape2)
+library(cowplot)
+library(car)
+library(ggpubr)
+
+# Get and declare functions
+#Set working directory to the folder in which all CSV files are located
+setwd(dirname(rstudioapi::getActiveDocumentContext()$path))
+source("C:/Users/ASUSTeK/OneDrive/Documenten/Github/Short_TLoadDBack/functions.R") # file in the same directory for functions so they're together
+
+Dir = "C:/Users/ASUSTeK/OneDrive/Documenten/Github/Short_TLoadDBack/Data/"
+setwd(Dir)
+
+```
+
+```{r message=FALSE, warning = FALSE}
+##########################################
+  ### PVT/VIGILANCE/RT ###
+#########################################
+
+#Download PVT data (this datafile is made in 'preprocessing')
+PVT <- read.csv(paste0(Dir, "PVT.csv"), header = TRUE, sep = )
+
+### Do like Borrogan : mean 1/RT
+PVT$RT <- 1/(PVT$RT/1000) #1/RT  ==> other result
+
+# we have 97 iDs. Each participant is in either LCL or HCL
+for (i in 1:97) {
+  PVT$MeanRT[PVT$ID==i & PVT$Test==1 & PVT$Day==1]= mean (PVT$RT[PVT$ID==i & PVT$Test==1 & PVT$Day==1])
+  PVT$MeanRT[PVT$ID==i & PVT$Test==2 & PVT$Day==1]= mean (PVT$RT[PVT$ID==i & PVT$Test==2 & PVT$Day==1])
+  PVT$MeanRT[PVT$ID==i & PVT$Test==1 & PVT$Day==2]= mean (PVT$RT[PVT$ID==i & PVT$Test==1 & PVT$Day==2])
+  PVT$MeanRT[PVT$ID==i & PVT$Test==2 & PVT$Day==2]= mean (PVT$RT[PVT$ID==i & PVT$Test==2 & PVT$Day==2])
+}
+
+# remove duplicates: now only 1 datapoint per MeanRT
+#make dataframe with 1 measure per condition, participant and day
+PVT<- PVT[PVT$Trial.Number==1,]
+length(unique(PVT$MeanRT))
+#388
+97*4
+
+#visualise
+#visualise RT's: from 0 to 10 seconds 
+d<-melt(data.frame(RT=c(PVT$MeanRT))) # we melt to wide format
+pl <- ggplot(d, aes(x = variable, y = value, fill=variable))+
+  geom_flat_violin(position = position_nudge(x = .2, y = 0),adjust =2)+
+  coord_flip()+
+  theme_cowplot()+
+  geom_point(position=position_jitter(width=.15), size=2)+
+  geom_boxplot(width= .10, outlier.shape = NA)+
+  theme(legend.position="MeanRT")
+pl
+qqPlot(PVT$MeanRT) # clearly not a normal distribution: a big skew 
+
+# remove outliers? 
+outliers <- boxplot(PVT$MeanRT, plot=FALSE)$out
+PVT<- PVT[-which(PVT$MeanRT %in% outliers),]
+#visualise
+d<-melt(data.frame(RT=c(PVT$MeanRT))) # we melt to wide format
+pl<- ggplot(d, aes(x = variable, y = value, fill=variable))+
+  geom_flat_violin(position = position_nudge(x = .2, y = 0),adjust =2)+
+  coord_flip()+
+  theme_cowplot()+
+  geom_point(position=position_jitter(width=.15), size=2)+
+  geom_boxplot(width= .10, outlier.shape = NA)+
+  theme(legend.position="RT")
+pl
+qqPlot(PVT$MeanRT) #still not the best but already much better
+
+# make factors
+PVT$Day <- factor(PVT$Day)
+PVT$Test <- factor(PVT$Test)
+PVT$Condition <- factor(PVT$Condition)
+#check factors
+levels(PVT$Condition)
+
+#look only at before-test measure (test=1)
+PVT <- PVT[!(PVT$Test==2),] 
+#remove unnecessairy columns
+PVT = subset(PVT, select = -c(Local.Date, Participant.Private.ID, Task.Name, Trial.Number, Correct, timelimit))
+
+# summarize data per group
+sum <- group_by(PVT, Condition, Test, Day) %>%
+  summarise(
+    count = n(),
+    mean = mean(MeanRT, na.rm = TRUE),
+    sd = sd(RT, na.rm = TRUE))
+sum 
+
+ggboxplot(PVT, x = "Condition", y = "MeanRT", 
+          color = "Condition", palette = c("#00AFBB", "#E7B800"),
+          ylab = "MeanRT", xlab = "Condition")
+
+#normality
+PVT %>%
+  group_by(Day) %>%
+  shapiro_test(MeanRT) # normal distribution
+ggqqplot(PVT, 'MeanRT', facet.by='Condition')
+
+#statistics
+res.aov2 <- aov(MeanRT ~ Condition * Day, data= PVT)
+summary(res.aov2)# no sign! this is good, means vigilance was same in all conditions
+
+#summary statistics
+PVT %>%
+  group_by(Day, Condition) %>%
+  get_summary_stats(MeanRT, type = "mean_sd")
+
+#visualize
+two_w <- lmer('MeanRT ~ Day * Condition + (1|ID)', data= PVT)
+emmeans1 = emmeans(two_w, pairwise ~ Day * Condition , adjust ="fdr", type = "response")
+emmean_dataframe <- summary(emmeans1)$emmeans
+emmeans1
+Anova(two_w, type='III')
+ 
+pl<- ggplot(PVT, aes(x= Day, y = MeanRT))+
+    geom_flat_violin(aes(fill=Condition),position = position_nudge(x =.2, y = 0), alpha=.5, adjust = 1.5, colour = NA)+
+ geom_boxplot(aes(x = Day, y = MeanRT, fill = Condition), outlier.shape=NA, alpha= .45, width = .1, colour = "black") +
+    geom_point(data= emmean_dataframe, aes(x =Day, y = emmean, fill=Condition), position= position_dodge(0.1), size=4)+
+    theme(
+      legend.key.size=unit(1.3, 'cm'),
+      legend.text=element_text(size=13),
+      plot.title = element_text(size=rel(2)),
+      panel.border = element_blank(),
+      panel.background = element_blank(),
+      axis.line = element_line(colour = "black"),
+      panel.grid.major.y = element_line( size=.1, color="#dedede" ),
+      axis.text.x=element_text(size=rel(1.5)),
+      axis.title.y=element_text(size=rel(1.4)),
+      axis.title.x = element_blank())
+pl
+
+### Borrogan also looked at RT coefficient of variation CV=SD/Mean 
+
+
+```
+--------------------------------------------------------------
+```{r message=FALSE, warning = FALSE}
+
+##########################################
+  ### VAS-f: fatigue ###
+#########################################
+
+
+# subjective measure of fatigue on 1-10 scale
+# we want to know if there is a difference in VAS before and after Test
+
+#Download VAS-f data
+VAS <- read.csv(paste0(Dir, "VAS.csv"), header = TRUE, sep = )#VAS has 'quantised: 1-11 instead of 0-10
+
+# remove unnecessary columns
+VAS = subset(VAS, select = -c(Local.Date, Participant.Private.ID, Task.Name))
+VAS <-VAS[(grepl("quantised", VAS$Question.Key)),]
+
+# take sum of the scale per participant, per day/test. 
+for (i in 1:97) {
+  VAS$Mean[VAS$ID==i & VAS$Test==1 & VAS$Day==1]= mean (VAS$Response[VAS$ID==i & VAS$Test==1 & VAS$Day==1])
+  VAS$Mean[VAS$ID==i & VAS$Test==2 & VAS$Day==1]= mean (VAS$Response[VAS$ID==i & VAS$Test==2 & VAS$Day==1])
+  VAS$Mean[VAS$ID==i & VAS$Test==1 & VAS$Day==2]= mean (VAS$Response[VAS$ID==i & VAS$Test==1 & VAS$Day==2])
+  VAS$Mean[VAS$ID==i & VAS$Test==2 & VAS$Day==2]= mean (VAS$Response[VAS$ID==i & VAS$Test==2 & VAS$Day==2])
+}
+
+# check if conditions are equal
+length(VAS$Mean[VAS$Test==1 & VAS$Day ==1 & VAS$ID==1])
+length(VAS$Mean[VAS$Test==2 & VAS$Day ==1 & VAS$ID==1])
+length(VAS$Mean[VAS$Test==1 & VAS$Day ==2 & VAS$ID==1])
+length(VAS$Mean[VAS$Test==2 & VAS$Day ==2 & VAS$ID==1])
+
+#make dataframe with 1 measure per condition
+VAS<- VAS[VAS$Question.Key=='0-quantised',]
+
+# difference score, devide by baseline (pre TloadBack) as a function of group (Day/condition): (2-1)/1
+for (i in 1:97) {
+  VAS$Diff[VAS$ID==i & VAS$Day==1] = 
+    ((VAS$Mean[VAS$Test==2 & VAS$ID==i & VAS$Day==1]- VAS$Mean[VAS$Test==1 & VAS$ID==i & VAS$Day==1])/VAS$Mean[VAS$Test==1 & VAS$ID==i & VAS$Day==1])
+  VAS$Diff[VAS$ID==i & VAS$Day==2] = 
+    ((VAS$Mean[VAS$Test==2 & VAS$ID==i & VAS$Day==1]- VAS$Mean[VAS$Test==1 & VAS$ID==i & VAS$Day==2])/VAS$Mean[VAS$Test==1 & VAS$ID==i & VAS$Day==2])
+}
+
+#summary data
+sum <- group_by(VAS, Condition, Day) %>%
+  summarise(
+    count = n(),
+    mean = mean(Diff, na.rm = TRUE),
+    sd = sd(Diff, na.rm = TRUE)
+  )
+sum 
+
+#factors
+VAS$Day <- as.factor(VAS$Day)
+VAS$Test <- as.factor(VAS$Test)
+VAS$Condition <- as.factor(VAS$Condition)
+VAS$ID <- as.factor(VAS$ID)
+
+# check for significant outliers: 
+outliers <- boxplot(VAS$Diff, plot=FALSE)$out
+# VAS<- VAS[-which(VAS$Diff %in% outliers),]
+# log transform data
+# PVT$RT = log(PVT$MeanRT)
+#visualise
+d<-melt(data.frame(Diff=c(VAS$Diff))) # we melt to wide format
+p<- ggplot(d, aes(x = variable, y = value, fill=variable))+
+  geom_flat_violin(position = position_nudge(x = .2, y = 0),adjust =2)+
+  coord_flip()+
+  theme_cowplot()+
+  geom_point(position=position_jitter(width=.15), size=2)+
+  geom_boxplot(width= .10, outlier.shape = NA)+
+  theme(legend.position="VAS")
+
+# plot Diff per condition and day
+formula <- lmer('Diff ~ Day * Condition + (1|ID)', data= VAS)
+emmean_dataframe = as.data.frame(emmeans(formula, pairwise ~ Day | Condition , adjust ="fdr", type = "response"))
+
+two_w <- lm(Diff~Condition * Day, data=VAS)
+emmeans1<- emmeans(two_w, pairwise ~ Condition * Day, adjust ="fdr", type = "response")
+emmean_dataframe <- summary(emmeans1)$emmeans
+ 
+ ggplot(VAS, aes(x= Day, y = Diff))+
+    geom_flat_violin(aes(fill=Condition),position = position_nudge(x =.2, y = 0), alpha=.5, adjust = 1.5, colour = NA)+
+  geom_boxplot(aes(x = Day, y = Diff, fill = Condition), outlier.shape=NA, alpha= .45, width = .1, colour = "black") +
+    geom_point(data= emmean_dataframe, aes(x =Day, y = emmean, fill=Condition), position= position_dodge(0.1), size=4)+
+    theme(
+      legend.key.size=unit(1.3, 'cm'),
+      legend.text=element_text(size=13),
+      plot.title = element_text(size=rel(2)),
+      panel.border = element_blank(),
+      panel.background = element_blank(),
+      axis.line = element_line(colour = "black"),
+      panel.grid.major.y = element_line( size=.1, color="#dedede" ),
+      axis.text.x=element_text(size=rel(1.5)),
+      axis.title.y=element_text(size=rel(1.4)),
+      axis.title.x = element_blank())
+
+#statistics : CHECK PAPER BORROGAN!!!
+ Anova(two_w, type='III')
+summary(emmeans1)
+
+#normality
+qqPlot(VAS$Diff)
+VAS %>%
+  group_by(Day) %>%
+  shapiro_test(Diff) # if p bigger than 0.05, normal distribution
+ggqqplot(VAS, 'Diff', facet.by='Day')
+
+#statistics
+res.aov2 <- aov(Diff ~ Condition, data= VAS)
+summary(res.aov2)
+
+res.aov1 <- anova()
+
+########## VAS-f  DAY 1###########
+
+
+library("ggplot2")
+one_w <- lm(Diff~Condition , data=VAS)
+emmeans1<- emmeans(one_w, pairwise ~ Condition, adjust ="fdr", type = "response")
+emmeans1<-data.frame(emmeans1)
+emmeans1<-emmeans1[-c(3),]
+ggplot(emmeans1, aes(Condition, emmean)) +        # ggplot2 plot with confidence intervals
+  geom_point() +
+  geom_errorbar(aes(ymin = lower.CL, ymax = upper.CL))
+
+
+# summarize 
+## data table
+Data_dt <- as.data.table(VAS)
+Data_sum <- Data_dt[,.(meanResp=mean(Diff)), by = .(Condition, ID)]
+my_sum <- Data_sum %>%
+  group_by(Condition) %>%
+  summarise(
+    n = n(), 
+    mean = mean(meanResp),
+    sd = sd(meanResp)
+  ) %>%
+  mutate( se = sd/sqrt(n)) %>%
+  mutate( ic=se * qt((1-0.05)/2 + .5, n-1))
+print(my_sum)
+## plot 
+### using standard error
+ggplot(my_sum) + 
+  geom_bar( aes(x=Condition, y=mean), stat="identity", fill=c("black", "lightgrey"), alpha=0.5) + 
+  geom_errorbar( aes(x=Condition, ymin=mean-se, ymax=mean+se), width=0.4, colour="white", alpha=0.9, size=1.5) +
+  ggtitle("Experiment 1: Overall difference VAS-f - using standard error")
+### using confidence interval
+ggplot(my_sum) +
+  geom_bar( aes(x=Condition, y=mean), stat="identity", fill=c("black", "lightgrey"), alpha=0.5) +
+  geom_errorbar( aes(x=Condition, ymin=mean-ic, ymax=mean+ic), width=0.4, colour="white", alpha=0.9, size=1.5) +
+  ggtitle("Experiment 1: Overall Overall difference VAS-f - using confidence interval")
+
+
+# one sample t-tests
+library(effsize)
+VAS11 <- VAS11[VAS11$Condition == "DLPFC",] 
+cohen.d(VAS1$Diff, f = NA, paired = TRUE, mu = 0.5)
+
+
+######### VAS-f DAY 2 ############
+#Dataframe from day 2
+VAS2 <- VAS[!(VAS$Day==1),]
+
+
+#each time 13 questions, with answers on a scale of 0-9 (Response)
+# if Question.key contains 'quantised' then it is on 1-10 
+VAS2 <-VAS2[(grepl("quantised", VAS2$Question.Key)),]
+VAS2 = subset(VAS2, select = -c(Question.Key, Local.Date, Participant.Private.ID, Task.Name))
+
+# take sum of the scale per participant, per day/test. 
+for (i in 1:97) {
+  VAS2$Sum[VAS2$ID==i & VAS2$Test==1 ]= sum (VAS2$Response[VAS2$ID==i & VAS2$Test==1])
+  VAS2$Sum[VAS2$ID==i & VAS2$Test==2 ]= sum (VAS2$Response[VAS2$ID==i & VAS2$Test==2])
+}
+
+# check if conditions are equal
+length(VAS2$Sum[VAS2$Test==1 & VAS2$Day ==2 & VAS2$ID==1])
+length(VAS2$Sum[VAS2$Test==2 & VAS2$Day ==2 & VAS2$ID==1])
+
+#make dataframe with 1 measure per condition
+VAS2<- VAS2[VAS$Question.Key=='0-quantised',]
+
+# correcting for baseline: VAS2C$Diff as VAS2 op test 2 - test 1 per dag
+for (i in 1:97) {
+  VAS2$Diff[VAS2$ID==i] = (VAS2$Sum[VAS2$Test==2 & VAS2$ID==i]- VAS2$Sum[VAS2$Test==1 & VAS2$ID==i])
+}
+
+sum(VAS2$Diff[VAS2$Condition=="HCL"])
+sum(VAS2$Diff[VAS2$Condition=="LCL"])
+mean(VAS2$Diff[VAS2$Condition=="HCL"])
+mean(VAS2$Diff[VAS2$Condition=="LCL"])
+
+#factors
+VAS2$Day <- as.factor(VAS2$Day)
+VAS2$Test <- as.factor(VAS2$Test)
+VAS2$Condition <- as.factor(VAS2$Condition)
+VAS2$ID <- as.factor(VAS2$ID)
+
+
+one_way <- lm(Diff~Condition , data=VAS2)
+emmeans1 <- emmeans(one_way, pairwise ~ Condition, adjust ="fdr", type = "response")
+one_way_emm <- summary(emmeans1)$emmeans
+one_way_plotf(VAS2, one_way_emm, "Diff") 
+
+Anova(one_way, type='III')
+summary(emmeans1)
+emmeans1$contrasts
+
+
+emmeans1<-data.frame(emmeans1)
+emmeans1<-emmeans1[-c(3),]
+ggplot(emmeans1, aes(Condition, emmean)) +        # ggplot2 plot with confidence intervals
+  geom_point() +
+  geom_errorbar(aes(ymin = lower.CL, ymax = upper.CL))
+
+
+# summarize 
+## data table
+Data_dt <- as.data.table(VAS2)
+Data_sum <- Data_dt[,.(meanResp=mean(Diff)), by = .(Condition, ID)]
+my_sum <- Data_sum %>%
+  group_by(Condition) %>%
+  summarise(
+    n = n(), 
+    mean = mean(meanResp),
+    sd = sd(meanResp)
+  ) %>%
+  mutate( se = sd/sqrt(n)) %>%
+  mutate( ic=se * qt((1-0.05)/2 + .5, n-1))
+print(my_sum)
+## plot 
+### using standard error
+ggplot(my_sum) + 
+  geom_bar( aes(x=Condition, y=mean), stat="identity", fill=c("black", "lightgrey"), alpha=0.5) + 
+  geom_errorbar( aes(x=Condition, ymin=mean-se, ymax=mean+se), width=0.4, colour="white", alpha=0.9, size=1.5) +
+  ggtitle("Experiment 1: Overall difference VAS2-f - using standard error")
+### using confidence interval
+ggplot(my_sum) +
+  geom_bar( aes(x=Condition, y=mean), stat="identity", fill=c("black", "lightgrey"), alpha=0.5) +
+  geom_errorbar( aes(x=Condition, ymin=mean-ic, ymax=mean+ic), width=0.4, colour="white", alpha=0.9, size=1.5) +
+  ggtitle("Experiment 1: Overall Overall difference VAS2-f - using confidence interval")
+
+
+
+### CORR VAS-f difference score between two conditions (HCL and LCL)
+
+
+```
+
+-----------------------------------------------------------------------------------
+
+```{r message=FALSE, warning = FALSE}
+
+##########################################
+  ### PERFORMANCE/ ACCURACY/ OBJECTIVE CF ###
+#########################################
+
+# We will test Performance (weighted accuracy) with Condition (HCL/LCL) and Time (t1-t3) as within-subject factors.
+# interested in main effect e.g. t1>t4 and Condition x Time interaction on the Acc
+
+#### PREPARATION ####
+
+# Download EXP data
+data<- read.csv(paste0(Dir, "EXP.csv"), header = TRUE, sep = )
+
+# we remove rows that have prop_correct == NA , because these are lines in the data where the ERROR message was shown (accuracy=0)
+data <- data[!is.na(data$prop_correct),]
+# create a trial.index that goes from 1 to the number of trials:  not every participant has equal amount of trials, depends on their speed/accuracy
+for (i in 1:97) {
+  data$trial.index[data$ID==i]= 1:length(unique(data$Trial.Index[data$ID ==i]))
+}
+length(data$trial.index[is.na(data$trial.index)]) # check number of NA's, should be 0
+#remove some unnecessary columns
+data = subset(data, select = -c(Local.Date, Participant.Private.ID, Task.Name, Accuracy_Level, Time.Elapsed, Trial.Index))
+
+## WEIGHTED ACCURACY
+# = the evolution of performance during TloadDback
+# create var Time that indicates if it is part of t1, t2, t3. t1 is the first 40%, t2 middle 20%, t3 last 40% 
+
+# we need to work with percents because the #trials differs per ptt AND per day: 
+# length(unique(data$trial.index[data$ID ==1])) #This is the highest amount of trials on either day 
+# count_index <- data %>% count(ID)
+# count_index$n[count_index$ID==1] #total amount of trials for this participant (day 1 + day 2)
+for (i in 1:97) {
+  data$Time[data$ID ==i & data$Day==1] = "t3" # day 1
+  data$Time[data$ID ==i & data$Day==1 & data$trial.index<(0.6* length(data$trial.index[data$Day==1 & data$ID==i])) ] = "t2"
+  data$Time[data$ID ==i & data$Day==1 & data$trial.index<(0.4* length(data$trial.index[data$Day==1 & data$ID==i])) ] = "t1"
+   
+  data$Time[data$ID ==i & data$Day==2] = "t3" # day 2
+  data$Time[data$ID ==i & data$Day==2 & data$trial.index<(0.6* length(data$trial.index[data$Day==2 & data$ID==i])) ] = "t2"
+  data$Time[data$ID ==i & data$Day==2 & data$trial.index<(0.4* length(data$trial.index[data$Day==2 & data$ID==i])) ] = "t1"
+}
+length(data$Time[is.na(data$Time)]) #NAs, should be 0
+
+
+## CREATE DATAFRAME  with the Acc prop_correct per ID, Time, Day, Condition
+EXP <- group_by(data, Condition, Day, Time, ID) %>%
+  summarise(
+    count = n(),
+    Acc = mean(prop_correct, na.rm = TRUE)
+  )
+EXP <- as.data.frame(EXP)
+head(EXP) # mean Acc (prop_correct) per ID, Time, Day and Condition
+
+# set factors
+EXP$Day <- as.factor(EXP$Day)
+EXP$Time <- as.factor(EXP$Time)
+EXP$Condition <- as.factor(EXP$Condition)
+EXP$ID <- as.factor(EXP$ID)
+
+
+### CHECKING ASSUMPTIONS ####
+### Time x Condition 2-way ANOVA with interaction effect
+res.aov2 <- aov(Acc ~ Condition*Time, data= EXP)
+summary(res.aov2)
+
+## HOMOGENEITY OF VARIANCE
+plot(res.aov2, 1) # residuqls vs fits plot shows no evident relationship residuals and fitted values (means of groups)
+#Levene's test homogeneity variances
+leveneTest(Acc~ Time * Condition, data= EXP) # no homogeneity! problem! 
+box_m(EXP[, 'Acc', drop=FALSE], EXP$Condition) # no homogeneity of variance
+
+## NORMALITY
+plot(res.aov2, 2)
+aov_residuals <- residuals (object=res.aov2)
+shapiro.test(x=aov_residuals) # no normality! 
+
+EXP %>%
+  group_by(Condition, Time) %>%
+  shapiro_test(Acc) # no normal distribution!
+
+ggqqplot(EXP, "Acc", ggtheme = theme_bw()) +
+  facet_grid(Time ~ Condition)
+ggqqplot(EXP, "Acc", ggtheme = theme_bw()) +
+  facet_grid( ~Condition) #  very obviously NOT a normal distribution
+#boxplot visualisation
+bxp <- ggboxplot(
+  EXP, x = "Condition", y = "Acc", palette = "jco")
+bxp
+# boxplot visualisation
+bxp <- ggboxplot(
+  EXP, x = "Time", y = "Acc",
+  color = "Condition", palette = "jco")
+bxp
+
+
+## SPHERICITY: Mauchly's test
+x<-anova_test(data=EXP, dv= Acc, wid= ID, between= Condition, within= c(Time, Day))
+get_anova_table(x, correction = c('GG')) #variances are NOT equal! 
+x$'Sphericity Corrections'
+
+## OUTLIERS
+EXP %>%
+  group_by(Condition, Time) %>%
+  identify_outliers(Acc)
+ outliers <- boxplot(EXP$prop_correct, plot=FALSE)$out
+summary(EXP$Acc)
+outliers <- boxplot(EXP$Acc, plot=FALSE)$out
+#remove outliers
+#remove under 3? (sign not paying attention? a bit arbitrary)
+#EXP <-  EXP[!EXP$Acc<0.3,]
+list_quantiles <- tapply(EXP$Acc, EXP$Condition, quantile)
+Q1s <- sapply(1:2, function(i) list_quantiles[[i]][2])
+Q3s <- sapply(1:2, function(i) list_quantiles[[i]][4])
+IQRs <- tapply(EXP$Acc, EXP$Condition, IQR)
+Lowers <- Q1s - 1.5*IQRs
+Uppers <- Q3s + 1.5*IQRs
+datas <- split(EXP, EXP$Condition)
+data_no_outlier <- NULL
+for (i in 1:2){
+out <- subset(datas[[i]], datas[[i]]$Acc > Lowers[i] & datas[[i]]$Acc < Uppers[i])
+data_no_outlier <- rbind(data_no_outlier, out)
+}
+EXP<- as.data.frame(data_no_outlier)
+
+
+#### STATISTICAL TEST ####
+
+## CONDITION * TIME 
+
+#unbalanced design! not equal amount in each group
+length(unique(EXP$ID[EXP$Condition=='LCL']))
+length(unique(EXP$ID[EXP$Condition=='HCL']))
+
+#even after log transform and removing outliers we have clearly not a normal distribution 
+# so we need to use GLM. Anova because unbalanced design: not equal amount ppt in each group. 
+#https://stats.stackexchange.com/questions/189115/fitting-a-binomial-glmm-glmer-to-a-response-variable-that-is-a-proportion-or-f
+#BINOMIAL 
+
+#The outcome (accuracy) is between 0 and 1, continuous and non-negative: proportion so BINOMIAL 
+#we need to use weights argument for the #trials that lead to the proportion of Acc
+two_w <- glmer(Acc ~ Condition * Time + (1 | ID), weights = count,
+   family = binomial, data = EXP)
+emmeans1<- emmeans(two_w, pairwise ~ Condition * Time, adjust ="fdr", type = "response")
+emmean_dataframe <- summary(emmeans1)$emmeans
+
+Anova(two_w, type='III')
+summary(emmeans1)
+  
+my_sum <- EXP %>%
+  group_by(Time, Condition) %>%
+  summarise(
+    n = n(), 
+    mean = mean(Acc),
+    sd = sd(Acc)
+  ) %>%
+  mutate( se = sd/sqrt(n)) %>%
+  mutate( ic=se * qt((1-0.05)/2 + .5, n-1))
+my_sum
+
+emmean_dataframe$n = my_sum$n
+emmean_dataframe$ic = my_sum$ic
+
+## Visualisation Condition * Time 
+pl<- ggplot()+
+    geom_flat_violin(data= EXP, aes(x= Time, y= Acc, fill=Condition),position = position_nudge(x =.2, y = 0), alpha=.5, adjust = 1.5, colour = NA)+
+  geom_boxplot(data= EXP, aes(x = Time, y = Acc, fill = Condition), outlier.shape=NA, alpha= .45, width = .1, colour = "black") +
+   geom_point(data= emmean_dataframe, aes(x =Time, y = prob, fill=Condition), position= position_dodge(0.1), size=4)+
+  geom_errorbar( data= emmean_dataframe, aes(x=Time, ymin=prob-SE, ymax=prob+SE), width=0.05, colour="black", alpha=0.9, size=0.05) + #SD error bar 
+  geom_errorbar(data= emmean_dataframe, aes(x=Time, ymin=prob-ic, ymax=prob+ic), width=0.4, colour="red", alpha=0.9, size=0.05) + #C.I.
+    theme(
+      legend.key.size=unit(1.3, 'cm'),
+      legend.text=element_text(size=13),
+      plot.title = element_text(size=rel(2)),
+      panel.border = element_blank(),
+      panel.background = element_blank(),
+      axis.line = element_line(colour = "black"),
+      panel.grid.major.y = element_line( size=.1, color="#dedede" ),
+      axis.text.x=element_text(size=rel(1.5)),
+      axis.title.y=element_text(size=rel(1.4)),
+      axis.title.x = element_blank())
+pl # Acc is higher in LCL at each time point
+emmean_dataframe 
+
+
+## Visualisation of just Condition
+one_w <- glmer(Acc ~ Condition  + (1 | ID), weights = count,
+   family = binomial, data = EXP)
+emmeans1<- emmeans(one_w, pairwise ~ Condition, adjust ="fdr", type = "response")
+emmean_dataframe <- summary(emmeans1)$emmeans
+
+Anova(one_w, type='III')
+summary(emmeans1)
+
+pl<- ggplot(EXP, aes(x= Condition, y = Acc))+
+    geom_flat_violin(aes(fill=Condition),position = position_nudge(x =.2, y = 0), alpha=.5, adjust = 1.5, colour = NA)+
+  geom_boxplot(aes(x = Condition, y = Acc, fill = Condition), outlier.shape=NA, alpha= .45, width = .1, colour = "black") +
+   geom_point(data= emmean_dataframe, aes(x =Condition, y = prob, fill=Condition), position= position_dodge(0.1), size=4)+
+    theme(
+      legend.key.size=unit(1.3, 'cm'),
+      legend.text=element_text(size=13),
+      plot.title = element_text(size=rel(2)),
+      panel.border = element_blank(),
+      panel.background = element_blank(),
+      axis.line = element_line(colour = "black"),
+      panel.grid.major.y = element_line( size=.1, color="#dedede" ),
+      axis.text.x=element_text(size=rel(1.5)),
+      axis.title.y=element_text(size=rel(1.4)),
+      axis.title.x = element_blank())
+pl
+emmean_dataframe# LCL clearly has higher Acc: 0.89 for LCL and 0.62 for HCL
+
+
+#### COMPARE DAY 1 to DAY 2 #####
+
+# Condition * Day: Day perhaps interesting 
+two_w <- glmer(Acc ~ Condition * Day + (1 | ID), weights = count,
+   family = binomial, data = EXP)
+emmeans1<- emmeans(two_w, pairwise ~ Condition * Day, adjust ="fdr", type = "response")
+emmean_dataframe <- summary(emmeans1)$emmeans
+
+Anova(two_w, type='III')
+summary(emmeans1)
+  
+my_sum <- EXP %>%
+  group_by(Day, Condition) %>%
+  summarise(
+    n = n(), 
+    mean = mean(Acc),
+    sd = sd(Acc)
+  ) %>%
+  mutate( se = sd/sqrt(n)) %>%
+  mutate( ic=se * qt((1-0.05)/2 + .5, n-1))
+my_sum
+
+emmean_dataframe$n = my_sum$n
+emmean_dataframe$ic = my_sum$ic
+
+## Visualisation Condition * Time 
+pl<- ggplot()+
+    geom_flat_violin(data= EXP, aes(x= Day, y= Acc, fill=Condition),position = position_nudge(x =.2, y = 0), alpha=.5, adjust = 1.5, colour = NA)+
+  geom_boxplot(data= EXP, aes(x = Day, y = Acc, fill = Condition), outlier.shape=NA, alpha= .45, width = .1, colour = "black") +
+   geom_point(data= emmean_dataframe, aes(x =Day, y = prob, fill=Condition), position= position_dodge(0.1), size=4)+
+  geom_errorbar( data= emmean_dataframe, aes(x=Day, ymin=prob-SE, ymax=prob+SE), width=0.05, colour="black", alpha=0.9, size=0.05) + #SD error bar 
+  geom_errorbar(data= emmean_dataframe, aes(x=Day, ymin=prob-ic, ymax=prob+ic), width=0.4, colour="red", alpha=0.9, size=0.05) + #C.I.
+    theme(
+      legend.key.size=unit(1.3, 'cm'),
+      legend.text=element_text(size=13),
+      plot.title = element_text(size=rel(2)),
+      panel.border = element_blank(),
+      panel.background = element_blank(),
+      axis.line = element_line(colour = "black"),
+      panel.grid.major.y = element_line( size=.1, color="#dedede" ),
+      axis.text.x=element_text(size=rel(1.5)),
+      axis.title.y=element_text(size=rel(1.4)),
+      axis.title.x = element_blank())
+pl # Acc is higher in day 2 for both conditions! 
+emmean_dataframe 
+
+```
+
+```{r}
+
+###### components (color/pic): mixed-D ANOVA Stim * Condition * Time ####
+# assess seperately evoluiton within time for 2 components of the task: pics are big/small with  no WM component whereas balss have 8 different colors + n-back. which one is harder? We made a weighted accuracy where  
+# mixed-design ANOVA with component (ball vs pic) and condition (HCL/LCL) and Time (t1-4) as within-subj factors. 
+# interaction and main effect
+# to indicate higher complexity WMM component (pics) compared to balls 
+
+EXP <- group_by(data, Condition, Time, ID, Stim) %>%
+  summarise(
+    count = n(),
+    Acc = mean(accuracy, na.rm = TRUE)
+  )
+EXP <- as.data.frame(EXP)
+head(EXP)
+
+# set factors
+EXP$Time <- as.factor(EXP$Time)
+EXP$Condition <- as.factor(EXP$Condition)
+EXP$ID <- as.factor(EXP$ID)
+EXP$Stim <- as.factor(EXP$Stim)
+
+two_w <- glmer(Acc ~ Condition * Time * Stim + (1 | ID), weights = count,
+   family = binomial, data = EXP)
+emmeans1<- emmeans(two_w, pairwise ~ Condition * Time * Stim, adjust ="fdr", type = "response")
+emmean_dataframe <- summary(emmeans1)$emmeans
+
+Anova(two_w, type='III')
+summary(emmeans1)
+
+my_sum <- EXP %>%
+  group_by(Time, Stim, Condition) %>%
+  summarise(
+    n = n(), 
+    mean = mean(Acc),
+    sd = sd(Acc)
+  ) %>%
+  mutate( se = sd/sqrt(n)) %>%
+  mutate( ic=se * qt((1-0.05)/2 + .5, n-1))
+my_sum
+
+emmean_dataframe$n = my_sum$n
+emmean_dataframe$ic = my_sum$ic
+
+
+## CORR Acc score between two conditions (HCL and LCL)
+
+```
+
+
+
