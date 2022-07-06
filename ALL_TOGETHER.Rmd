@@ -429,9 +429,8 @@ ggplot(my_sum) +
 
 #### PREPARATION ####
 
-# Download EXP data
+## DOWNLOAD + CLEAN DATA
 data<- read.csv(paste0(Dir, "EXP.csv"), header = TRUE, sep = )
-
 # we remove rows that have prop_correct == NA , because these are lines in the data where the ERROR message was shown (accuracy=0)
 data <- data[!is.na(data$prop_correct),]
 # create a trial.index that goes from 1 to the number of trials:  not every participant has equal amount of trials, depends on their speed/accuracy
@@ -445,11 +444,7 @@ data = subset(data, select = -c(Local.Date, Participant.Private.ID, Task.Name, A
 ## WEIGHTED ACCURACY
 # = the evolution of performance during TloadDback
 # create var Time that indicates if it is part of t1, t2, t3. t1 is the first 40%, t2 middle 20%, t3 last 40% 
-
 # we need to work with percents because the #trials differs per ptt AND per day: 
-# length(unique(data$trial.index[data$ID ==1])) #This is the highest amount of trials on either day 
-# count_index <- data %>% count(ID)
-# count_index$n[count_index$ID==1] #total amount of trials for this participant (day 1 + day 2)
 for (i in 1:97) {
   data$Time[data$ID ==i & data$Day==1] = "t3" # day 1
   data$Time[data$ID ==i & data$Day==1 & data$trial.index<(0.6* length(data$trial.index[data$Day==1 & data$ID==i])) ] = "t2"
@@ -463,7 +458,7 @@ length(data$Time[is.na(data$Time)]) #NAs, should be 0
 
 
 ## CREATE DATAFRAME  with the Acc prop_correct per ID, Time, Day, Condition
-EXP <- group_by(data, Condition, Day, Time, ID) %>%
+EXP <- group_by(data, Condition, Day, Time, ID, Stim) %>%
   summarise(
     count = n(),
     Acc = mean(prop_correct, na.rm = TRUE)
@@ -472,49 +467,41 @@ EXP <- as.data.frame(EXP)
 head(EXP) # mean Acc (prop_correct) per ID, Time, Day and Condition
 
 # set factors
-EXP$Day <- as.factor(EXP$Day)
 EXP$Time <- as.factor(EXP$Time)
 EXP$Condition <- as.factor(EXP$Condition)
+EXP$Day <- as.factor(EXP$Day)
 EXP$ID <- as.factor(EXP$ID)
+EXP$Stim <- as.factor(EXP$Stim)
 
 
 ### CHECKING ASSUMPTIONS ####
-### Time x Condition 2-way ANOVA with interaction effect
+
+# Time x Condition 2-way ANOVA with interaction effect
 res.aov2 <- aov(Acc ~ Condition*Time, data= EXP)
 summary(res.aov2)
 
 ## HOMOGENEITY OF VARIANCE
-plot(res.aov2, 1) # residuqls vs fits plot shows no evident relationship residuals and fitted values (means of groups)
 #Levene's test homogeneity variances
 leveneTest(Acc~ Time * Condition, data= EXP) # no homogeneity! problem! 
 box_m(EXP[, 'Acc', drop=FALSE], EXP$Condition) # no homogeneity of variance
+#visualisation
+plot(res.aov2, 1) # residuqls vs fits plot shows no evident relationship residuals and fitted values (means of groups)
 
 ## NORMALITY
-plot(res.aov2, 2)
 aov_residuals <- residuals (object=res.aov2)
 shapiro.test(x=aov_residuals) # no normality! 
-
 EXP %>%
   group_by(Condition, Time) %>%
   shapiro_test(Acc) # no normal distribution!
-
+#visualisation
+plot(res.aov2, 2) #clearly not normal
 ggqqplot(EXP, "Acc", ggtheme = theme_bw()) +
   facet_grid(Time ~ Condition)
 ggqqplot(EXP, "Acc", ggtheme = theme_bw()) +
   facet_grid( ~Condition) #  very obviously NOT a normal distribution
-#boxplot visualisation
-bxp <- ggboxplot(
-  EXP, x = "Condition", y = "Acc", palette = "jco")
-bxp
-# boxplot visualisation
-bxp <- ggboxplot(
-  EXP, x = "Time", y = "Acc",
-  color = "Condition", palette = "jco")
-bxp
-
 
 ## SPHERICITY: Mauchly's test
-x<-anova_test(data=EXP, dv= Acc, wid= ID, between= Condition, within= c(Time, Day))
+x<-anova_test(data= EXP, dv= Acc, wid= ID, between= Condition, within= c(Time, Day))
 get_anova_table(x, correction = c('GG')) #variances are NOT equal! 
 x$'Sphericity Corrections'
 
@@ -525,9 +512,11 @@ EXP %>%
  outliers <- boxplot(EXP$prop_correct, plot=FALSE)$out
 summary(EXP$Acc)
 outliers <- boxplot(EXP$Acc, plot=FALSE)$out
-#remove outliers
+
+#remove outliers? Maybe not necessary
 #remove under 3? (sign not paying attention? a bit arbitrary)
 #EXP <-  EXP[!EXP$Acc<0.3,]
+#remove outliers outside of quantiles
 list_quantiles <- tapply(EXP$Acc, EXP$Condition, quantile)
 Q1s <- sapply(1:2, function(i) list_quantiles[[i]][2])
 Q3s <- sapply(1:2, function(i) list_quantiles[[i]][4])
@@ -542,22 +531,20 @@ data_no_outlier <- rbind(data_no_outlier, out)
 }
 EXP<- as.data.frame(data_no_outlier)
 
-
-#### STATISTICAL TEST ####
-
-## CONDITION * TIME 
-
-#unbalanced design! not equal amount in each group
+# Also: unbalanced design! not equal amount in each group
 length(unique(EXP$ID[EXP$Condition=='LCL']))
 length(unique(EXP$ID[EXP$Condition=='HCL']))
 
+## SOLUTION: 
 #even after log transform and removing outliers we have clearly not a normal distribution 
-# so we need to use GLM. Anova because unbalanced design: not equal amount ppt in each group. 
-#https://stats.stackexchange.com/questions/189115/fitting-a-binomial-glmm-glmer-to-a-response-variable-that-is-a-proportion-or-f
-#BINOMIAL 
+# so we need to use GLM. https://stats.stackexchange.com/questions/189115/fitting-a-binomial-glmm-glmer-to-a-response-variable-that-is-a-proportion-or-f
+#BINOMIAL because the accuracy is between 0 and 1
+# it is a (continuous) proportion: we need to use the 'weights' argument for the number of trials that lead to the proportion
 
-#The outcome (accuracy) is between 0 and 1, continuous and non-negative: proportion so BINOMIAL 
-#we need to use weights argument for the #trials that lead to the proportion of Acc
+
+### CONDITION * TIME ###
+
+## STATISTICAL TEST
 two_w <- glmer(Acc ~ Condition * Time + (1 | ID), weights = count,
    family = binomial, data = EXP)
 emmeans1<- emmeans(two_w, pairwise ~ Condition * Time, adjust ="fdr", type = "response")
@@ -565,8 +552,8 @@ emmean_dataframe <- summary(emmeans1)$emmeans
 
 Anova(two_w, type='III')
 summary(emmeans1)
-  
-my_sum <- EXP %>%
+#summary 
+sum <- EXP %>%
   group_by(Time, Condition) %>%
   summarise(
     n = n(), 
@@ -575,12 +562,20 @@ my_sum <- EXP %>%
   ) %>%
   mutate( se = sd/sqrt(n)) %>%
   mutate( ic=se * qt((1-0.05)/2 + .5, n-1))
-my_sum
+sum
 
+## VISUALISATION
+# boxplot 
+bxp <- ggboxplot(
+  EXP, x = "Time", y = "Acc",
+  color = "Condition", palette = "jco")
+bxp
+
+## plot with error bars
 emmean_dataframe$n = my_sum$n
 emmean_dataframe$ic = my_sum$ic
+emmean_dataframe 
 
-## Visualisation Condition * Time 
 pl<- ggplot()+
     geom_flat_violin(data= EXP, aes(x= Time, y= Acc, fill=Condition),position = position_nudge(x =.2, y = 0), alpha=.5, adjust = 1.5, colour = NA)+
   geom_boxplot(data= EXP, aes(x = Time, y = Acc, fill = Condition), outlier.shape=NA, alpha= .45, width = .1, colour = "black") +
@@ -599,18 +594,23 @@ pl<- ggplot()+
       axis.title.y=element_text(size=rel(1.4)),
       axis.title.x = element_blank())
 pl # Acc is higher in LCL at each time point
-emmean_dataframe 
 
-
-## Visualisation of just Condition
+### CONDITION ###
+## STATISTICAL TEST
 one_w <- glmer(Acc ~ Condition  + (1 | ID), weights = count,
    family = binomial, data = EXP)
 emmeans1<- emmeans(one_w, pairwise ~ Condition, adjust ="fdr", type = "response")
-emmean_dataframe <- summary(emmeans1)$emmeans
+emmean_dataframe <- summary(emmeans1)$emmeans-
 
 Anova(one_w, type='III')
-summary(emmeans1)
+summary(emmeans1)# LCL clearly has higher Acc: 0.89 for LCL and 0.62 for HCL
 
+##VISUALISATION
+# boxplot 
+bxp <- ggboxplot(
+  EXP, x = "Condition", y = "Acc", palette = "jco")
+bxp
+#  plot
 pl<- ggplot(EXP, aes(x= Condition, y = Acc))+
     geom_flat_violin(aes(fill=Condition),position = position_nudge(x =.2, y = 0), alpha=.5, adjust = 1.5, colour = NA)+
   geom_boxplot(aes(x = Condition, y = Acc, fill = Condition), outlier.shape=NA, alpha= .45, width = .1, colour = "black") +
@@ -627,12 +627,11 @@ pl<- ggplot(EXP, aes(x= Condition, y = Acc))+
       axis.title.y=element_text(size=rel(1.4)),
       axis.title.x = element_blank())
 pl
-emmean_dataframe# LCL clearly has higher Acc: 0.89 for LCL and 0.62 for HCL
 
 
-#### COMPARE DAY 1 to DAY 2 #####
+####  DAY 1 vs DAY 2 #####
 
-# Condition * Day: Day perhaps interesting 
+## STATISTICAL TEST
 two_w <- glmer(Acc ~ Condition * Day + (1 | ID), weights = count,
    family = binomial, data = EXP)
 emmeans1<- emmeans(two_w, pairwise ~ Condition * Day, adjust ="fdr", type = "response")
@@ -640,8 +639,8 @@ emmean_dataframe <- summary(emmeans1)$emmeans
 
 Anova(two_w, type='III')
 summary(emmeans1)
-  
-my_sum <- EXP %>%
+#summary  
+sum <- EXP %>%
   group_by(Day, Condition) %>%
   summarise(
     n = n(), 
@@ -650,12 +649,13 @@ my_sum <- EXP %>%
   ) %>%
   mutate( se = sd/sqrt(n)) %>%
   mutate( ic=se * qt((1-0.05)/2 + .5, n-1))
-my_sum
+sum
 
+## VISUALISATION
+# plot with error bars
 emmean_dataframe$n = my_sum$n
 emmean_dataframe$ic = my_sum$ic
 
-## Visualisation Condition * Time 
 pl<- ggplot()+
     geom_flat_violin(data= EXP, aes(x= Day, y= Acc, fill=Condition),position = position_nudge(x =.2, y = 0), alpha=.5, adjust = 1.5, colour = NA)+
   geom_boxplot(data= EXP, aes(x = Day, y = Acc, fill = Condition), outlier.shape=NA, alpha= .45, width = .1, colour = "black") +
@@ -674,32 +674,17 @@ pl<- ggplot()+
       axis.title.y=element_text(size=rel(1.4)),
       axis.title.x = element_blank())
 pl # Acc is higher in day 2 for both conditions! 
-emmean_dataframe 
 
-```
 
-```{r}
 
-###### components (color/pic): mixed-D ANOVA Stim * Condition * Time ####
-# assess seperately evoluiton within time for 2 components of the task: pics are big/small with  no WM component whereas balss have 8 different colors + n-back. which one is harder? We made a weighted accuracy where  
-# mixed-design ANOVA with component (ball vs pic) and condition (HCL/LCL) and Time (t1-4) as within-subj factors. 
+### COMPONENTS (Color/Pic)####
+# evolution over time for 2 components of the task
+# Pics: decide if big/small. Color: decide if same as DualBack: more Working Memory
+# Stim * Condition * Time as within-subj factors
 # interaction and main effect
 # to indicate higher complexity WMM component (pics) compared to balls 
 
-EXP <- group_by(data, Condition, Time, ID, Stim) %>%
-  summarise(
-    count = n(),
-    Acc = mean(accuracy, na.rm = TRUE)
-  )
-EXP <- as.data.frame(EXP)
-head(EXP)
-
-# set factors
-EXP$Time <- as.factor(EXP$Time)
-EXP$Condition <- as.factor(EXP$Condition)
-EXP$ID <- as.factor(EXP$ID)
-EXP$Stim <- as.factor(EXP$Stim)
-
+## STATISTICAL TEST
 two_w <- glmer(Acc ~ Condition * Time * Stim + (1 | ID), weights = count,
    family = binomial, data = EXP)
 emmeans1<- emmeans(two_w, pairwise ~ Condition * Time * Stim, adjust ="fdr", type = "response")
@@ -707,9 +692,9 @@ emmean_dataframe <- summary(emmeans1)$emmeans
 
 Anova(two_w, type='III')
 summary(emmeans1)
-
-my_sum <- EXP %>%
-  group_by(Time, Stim, Condition) %>%
+# summary
+sum <- EXP %>%
+  group_by(Stim, Condition) %>%
   summarise(
     n = n(), 
     mean = mean(Acc),
@@ -717,15 +702,81 @@ my_sum <- EXP %>%
   ) %>%
   mutate( se = sd/sqrt(n)) %>%
   mutate( ic=se * qt((1-0.05)/2 + .5, n-1))
-my_sum
+sum
 
-emmean_dataframe$n = my_sum$n
-emmean_dataframe$ic = my_sum$ic
-
+## VISUALISATION
+# not really intuitive because 3-way interaction
 
 ## CORR Acc score between two conditions (HCL and LCL)
 
 ```
 
+
+-----------------------------------------------------------------------------------
+
+```{r message=FALSE, warning = FALSE}
+##########################################
+  ### CORRELATIONS ###
+#########################################
+
+### CORR VAS-f difference score between two conditions (HCL and LCL)
+
+
+## CORR Acc score between two conditions (HCL and LCL)
+
+
+## Pearson coeff  between delta (change) of VASf and delta (change) of Acc during first/second half 
+
+## Test-restest corr betweeen VAS f Day 1 and Day 2 in HCL and LCL
+
+# Test-restest corr Acc day 1 and day 2 in HCL and LCL
+
+## correlation VASf with PVT
+
+## corr VASf with Acc
+
+## Corr PVT with Acc
+
+
+
+## PSS vs. PTQ
+# noPMS 
+PSS <- data$PSS[data$PMS=='noPMS']
+PTQ <- data$PTQ[data$PMS=='noPMS']
+x_lab= 'noPMS_PSS'
+y_lab='noPMS_PTQ'
+overall_corr(PSS, PTQ, x_lab, y_lab)
+# PMS
+PSS <- data$PSS[data$PMS=='PMS']
+PTQ <- data$PTQ[data$PMS=='PMS']
+x_lab= 'PMS_PSS'
+y_lab='PMS_PTQ'
+overall_corr(PSS, PTQ, x_lab, y_lab)
+# PMDD
+PSS <- data$PSS[data$PMS=='PMDD']
+PTQ <- data$PTQ[data$PMS=='PMDD']
+x_lab= 'PMDD_PSS'
+y_lab='PMDD_PTQ'
+overall_corr(PSS, PTQ, x_lab, y_lab)
+
+## delta
+# noPMS
+PSS <- data$PSS[data$PMS=='noPMS'&data$Moment=='Foll']-data$PSS[data$PMS=='noPMS'&data$Moment=='Lut']
+PTQ <- data$PTQ[data$PMS=='noPMS'&data$Moment=='Foll']-data$PTQ[data$PMS=='noPMS'&data$Moment=='Lut']
+x_lab = 'noPMS_delta_PSS'
+y_lab = 'noPMS_delta_PTQ'
+overall_corr(PSS, PTQ, x_lab, y_lab)
+# PMS
+PSS <- data$PSS[data$PMS=='PMS'&data$Moment=='Foll']-data$PSS[data$PMS=='PMS'&data$Moment=='Lut']
+PTQ <- data$PTQ[data$PMS=='PMS'&data$Moment=='Foll']-data$PTQ[data$PMS=='PMS'&data$Moment=='Lut']
+x_lab = 'PMS_delta_PSS'
+y_lab = 'PMS_delta_PTQ'
+overall_corr(PSS, PTQ, x_lab, y_lab)
+#PMDD
+PSS <- data$PSS[data$PMS=='PMDD'&data$Moment=='Foll']-data$PSS[data$PMS=='PMDD'&data$Moment=='Lut']
+PTQ <- data$PTQ[data$PMS=='PMDD'&data$Moment=='Foll']-data$PTQ[data$PMS=='PMDD'&data$Moment=='Lut']
+x_lab = 'PMDD_delta_PSS'
+y_lab = 'PMDD_delta_PTQ'
+overall_corr(PSS, PTQ, x_lab, y_lab)
 
 

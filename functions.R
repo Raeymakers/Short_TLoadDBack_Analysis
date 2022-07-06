@@ -144,6 +144,42 @@ two_way_plotf <- function(data, emmean_dataframe, var){
       axis.title.y=element_text(size=rel(1.5))) #size y axis title
       }
 
+plotty <- function(data, Dataframe, xvar, yvar, fillvar, Mean, title){
+  ggplot()+ 
+    geom_flat_violin(data= data, aes(x= .data[[xvar]], y= .data[[yvar]], fill=.data[[fillvar]]),position = position_nudge(x =.2, y = 0), alpha=.5, adjust = 1.5, colour = NA)+
+    geom_boxplot(data= data, aes(x= .data[[xvar]], y= .data[[yvar]], fill=.data[[fillvar]]), outlier.shape=NA, alpha= .45, width = .1, colour = "black")+
+    geom_point(data= Dataframe, aes(x =.data[[xvar]], y = .data[[Mean]], fill=.data[[fillvar]]), position= position_dodge(0.1), size=4)+
+    geom_errorbar( data= Dataframe, aes(x=.data[[xvar]], ymin=.data[[Mean]]-SE, ymax=.data[[Mean]]+SE), width=0.05, colour="black", alpha=0.9, size=0.05) + #SD error bar
+    geom_errorbar(data= Dataframe, aes(x=.data[[xvar]], ymin=.data[[Mean]]-ic, ymax=.data[[Mean]]+ic), width=0.4, colour="red", alpha=0.9, size=0.05)+ #C.I.
+    # scale_fill_manual(values = c("blue", 'red'), #colours used in plot
+    #                   name='', #legend gets no name
+    #                   labels=c(paste0('noPMS \n n=', as.character(sum(data$PMS == "noPMS")/2)), paste0('PMS \n n=', as.character(sum(data$PMS == "PMS")/2)), paste0('PMDD \n n=',as.character(sum(data$PMS == "PMDD")/2))))+ #labels names with amount
+    ggtitle(title)+
+    # scale_x_discrete(labels=c("Follicular", "Luteal"))+
+    theme(
+      legend.key.size=unit(1.3, 'cm'), # make keys of legend bigger
+      legend.text=element_text(size=13), # text legend bigger
+      plot.title = element_text(size=rel(2)), # plot title bigger
+      panel.border = element_blank(), # no border panel (APA)
+      panel.background = element_blank(), #white simple background
+      axis.line = element_line(colour = "black"), # axis lines black
+      panel.grid.major.y = element_line( size=.1, color="#dedede" ), #slight grey horizontal lines
+      axis.text.x=element_text(size=rel(2)), #size x axis title
+      axis.text.y=element_text(size=rel(1.3)),
+      axis.title.y=element_text(size=rel(1.5)), #size y axis title
+      axis.title.x = element_blank()) # leave away extra x title (only 'foll' and 'lut')
+}
 
 
+
+### Correlation plot ####
+overall_corr <- function(PSS, PTQ, x_lab, y_lab) {
+  dataframe <- data.frame(PSS, PTQ)
+  ggscatter(dataframe, x = "PSS", y = "PTQ",
+            add='reg.line', fullrange=TRUE,
+            conf.int=TRUE,
+            cor.coef=TRUE, cor.method='pearson',
+            xlab=x_lab, ylab=y_lab)+
+    geom_segment(aes(x = -4, y = -4, xend = 40, yend = 40), size= 1, colour='red')
+}
 
