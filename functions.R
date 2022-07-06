@@ -144,7 +144,28 @@ two_way_plotf <- function(data, emmean_dataframe, var){
       axis.title.y=element_text(size=rel(1.5))) #size y axis title
       }
 
+one_w_plot <- function(data, Dataframe, xvar, yvar, Mean, title){
+  ggplot(EXP, aes(x=  .data[[xvar]], y = .data[[yvar]]))+
+    geom_flat_violin(aes(fill= .data[[xvar]]),position = position_nudge(x =.2, y = 0), alpha=.5, adjust = 1.5, colour = NA)+
+    geom_boxplot(aes(x =  .data[[xvar]], y =  .data[[yvar]], fill =  .data[[xvar]]), outlier.shape=NA, alpha= .45, width = .1, colour = "black") +
+    geom_point(data= Dataframe, aes(x = .data[[xvar]], y = .data[[Mean]], fill=.data[[xvar]]), position= position_dodge(0.1), size=4)+
+    ggtitle(title)+
+    theme(
+      legend.key.size=unit(1.3, 'cm'),
+      legend.text=element_text(size=13),
+      plot.title = element_text(size=rel(2)),
+      panel.border = element_blank(),
+      panel.background = element_blank(),
+      axis.line = element_line(colour = "black"),
+      panel.grid.major.y = element_line( size=.1, color="#dedede" ),
+      axis.text.x=element_text(size=rel(1.5)),
+      axis.title.y=element_text(size=rel(1.4)),
+      axis.title.x = element_blank())
+}
+
 plotty <- function(data, Dataframe, xvar, yvar, fillvar, Mean, title){
+  Dataframe$n= sum$n
+  Dataframe$ic = sum$ic
   ggplot()+ 
     geom_flat_violin(data= data, aes(x= .data[[xvar]], y= .data[[yvar]], fill=.data[[fillvar]]),position = position_nudge(x =.2, y = 0), alpha=.5, adjust = 1.5, colour = NA)+
     geom_boxplot(data= data, aes(x= .data[[xvar]], y= .data[[yvar]], fill=.data[[fillvar]]), outlier.shape=NA, alpha= .45, width = .1, colour = "black")+
@@ -170,6 +191,31 @@ plotty <- function(data, Dataframe, xvar, yvar, fillvar, Mean, title){
       axis.title.x = element_blank()) # leave away extra x title (only 'foll' and 'lut')
 }
 
+
+### summary
+sum_2 <- function (data, var1, var2, depvar){
+  data %>%
+    group_by(.data[[var1]], .data[[var2]]) %>%
+    summarise(
+      n = n(), 
+      mean = mean(.data[[depvar]]),
+      sd = sd(.data[[depvar]])
+    ) %>%
+    mutate( se = sd/sqrt(n)) %>%
+    mutate( ic=se * qt((1-0.05)/2 + .5, n-1))
+}
+
+sum_1 <- function (data, var1, depvar){
+  data %>%
+    group_by(.data[[var1]]) %>%
+    summarise(
+      n = n(), 
+      mean = mean(.data[[depvar]]),
+      sd = sd(.data[[depvar]])
+    ) %>%
+    mutate( se = sd/sqrt(n)) %>%
+    mutate( ic=se * qt((1-0.05)/2 + .5, n-1))
+}
 
 
 ### Correlation plot ####

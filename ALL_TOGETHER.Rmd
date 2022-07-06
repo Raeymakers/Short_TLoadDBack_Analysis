@@ -297,16 +297,9 @@ ggplot(emmeans1, aes(Condition, emmean)) +        # ggplot2 plot with confidence
 ## data table
 Data_dt <- as.data.table(VAS)
 Data_sum <- Data_dt[,.(meanResp=mean(Diff)), by = .(Condition, ID)]
-my_sum <- Data_sum %>%
-  group_by(Condition) %>%
-  summarise(
-    n = n(), 
-    mean = mean(meanResp),
-    sd = sd(meanResp)
-  ) %>%
-  mutate( se = sd/sqrt(n)) %>%
-  mutate( ic=se * qt((1-0.05)/2 + .5, n-1))
-print(my_sum)
+
+sum <- sum_1 (EXP, 'Condition', 'MeanResp')
+sum
 ## plot 
 ### using standard error
 ggplot(my_sum) + 
@@ -387,16 +380,9 @@ ggplot(emmeans1, aes(Condition, emmean)) +        # ggplot2 plot with confidence
 ## data table
 Data_dt <- as.data.table(VAS2)
 Data_sum <- Data_dt[,.(meanResp=mean(Diff)), by = .(Condition, ID)]
-my_sum <- Data_sum %>%
-  group_by(Condition) %>%
-  summarise(
-    n = n(), 
-    mean = mean(meanResp),
-    sd = sd(meanResp)
-  ) %>%
-  mutate( se = sd/sqrt(n)) %>%
-  mutate( ic=se * qt((1-0.05)/2 + .5, n-1))
-print(my_sum)
+
+sum <- sum_1 (EXP, 'Condition', 'MeanResp')
+sum
 ## plot 
 ### using standard error
 ggplot(my_sum) + 
@@ -553,15 +539,7 @@ emmean_dataframe <- summary(emmeans1)$emmeans
 Anova(two_w, type='III')
 summary(emmeans1)
 #summary 
-sum <- EXP %>%
-  group_by(Time, Condition) %>%
-  summarise(
-    n = n(), 
-    mean = mean(Acc),
-    sd = sd(Acc)
-  ) %>%
-  mutate( se = sd/sqrt(n)) %>%
-  mutate( ic=se * qt((1-0.05)/2 + .5, n-1))
+sum <- sum_2 (EXP, 'Time', 'Condition', 'Acc')
 sum
 
 ## VISUALISATION
@@ -572,35 +550,15 @@ bxp <- ggboxplot(
 bxp
 
 ## plot with error bars
-emmean_dataframe$n = my_sum$n
-emmean_dataframe$ic = my_sum$ic
-emmean_dataframe 
-
-pl<- ggplot()+
-    geom_flat_violin(data= EXP, aes(x= Time, y= Acc, fill=Condition),position = position_nudge(x =.2, y = 0), alpha=.5, adjust = 1.5, colour = NA)+
-  geom_boxplot(data= EXP, aes(x = Time, y = Acc, fill = Condition), outlier.shape=NA, alpha= .45, width = .1, colour = "black") +
-   geom_point(data= emmean_dataframe, aes(x =Time, y = prob, fill=Condition), position= position_dodge(0.1), size=4)+
-  geom_errorbar( data= emmean_dataframe, aes(x=Time, ymin=prob-SE, ymax=prob+SE), width=0.05, colour="black", alpha=0.9, size=0.05) + #SD error bar 
-  geom_errorbar(data= emmean_dataframe, aes(x=Time, ymin=prob-ic, ymax=prob+ic), width=0.4, colour="red", alpha=0.9, size=0.05) + #C.I.
-    theme(
-      legend.key.size=unit(1.3, 'cm'),
-      legend.text=element_text(size=13),
-      plot.title = element_text(size=rel(2)),
-      panel.border = element_blank(),
-      panel.background = element_blank(),
-      axis.line = element_line(colour = "black"),
-      panel.grid.major.y = element_line( size=.1, color="#dedede" ),
-      axis.text.x=element_text(size=rel(1.5)),
-      axis.title.y=element_text(size=rel(1.4)),
-      axis.title.x = element_blank())
-pl # Acc is higher in LCL at each time point
+pl <- plotty(EXP, emmean_dataframe, 'Time',  'Acc', 'Condition', 'prob', 'Performance/Objective CF') 
+pl
 
 ### CONDITION ###
 ## STATISTICAL TEST
 one_w <- glmer(Acc ~ Condition  + (1 | ID), weights = count,
    family = binomial, data = EXP)
 emmeans1<- emmeans(one_w, pairwise ~ Condition, adjust ="fdr", type = "response")
-emmean_dataframe <- summary(emmeans1)$emmeans-
+emmean_dataframe <- summary(emmeans1)$emmeans
 
 Anova(one_w, type='III')
 summary(emmeans1)# LCL clearly has higher Acc: 0.89 for LCL and 0.62 for HCL
@@ -610,22 +568,9 @@ summary(emmeans1)# LCL clearly has higher Acc: 0.89 for LCL and 0.62 for HCL
 bxp <- ggboxplot(
   EXP, x = "Condition", y = "Acc", palette = "jco")
 bxp
+
 #  plot
-pl<- ggplot(EXP, aes(x= Condition, y = Acc))+
-    geom_flat_violin(aes(fill=Condition),position = position_nudge(x =.2, y = 0), alpha=.5, adjust = 1.5, colour = NA)+
-  geom_boxplot(aes(x = Condition, y = Acc, fill = Condition), outlier.shape=NA, alpha= .45, width = .1, colour = "black") +
-   geom_point(data= emmean_dataframe, aes(x =Condition, y = prob, fill=Condition), position= position_dodge(0.1), size=4)+
-    theme(
-      legend.key.size=unit(1.3, 'cm'),
-      legend.text=element_text(size=13),
-      plot.title = element_text(size=rel(2)),
-      panel.border = element_blank(),
-      panel.background = element_blank(),
-      axis.line = element_line(colour = "black"),
-      panel.grid.major.y = element_line( size=.1, color="#dedede" ),
-      axis.text.x=element_text(size=rel(1.5)),
-      axis.title.y=element_text(size=rel(1.4)),
-      axis.title.x = element_blank())
+pl <- one_w_plot(EXP, emmean_dataframe, 'Condition', 'Acc', 'prob', 'Performance/Objective CF')
 pl
 
 
@@ -640,41 +585,13 @@ emmean_dataframe <- summary(emmeans1)$emmeans
 Anova(two_w, type='III')
 summary(emmeans1)
 #summary  
-sum <- EXP %>%
-  group_by(Day, Condition) %>%
-  summarise(
-    n = n(), 
-    mean = mean(Acc),
-    sd = sd(Acc)
-  ) %>%
-  mutate( se = sd/sqrt(n)) %>%
-  mutate( ic=se * qt((1-0.05)/2 + .5, n-1))
+sum <- sum_2 (EXP, 'Day', 'Condition', 'Acc')
 sum
 
 ## VISUALISATION
 # plot with error bars
-emmean_dataframe$n = my_sum$n
-emmean_dataframe$ic = my_sum$ic
-
-pl<- ggplot()+
-    geom_flat_violin(data= EXP, aes(x= Day, y= Acc, fill=Condition),position = position_nudge(x =.2, y = 0), alpha=.5, adjust = 1.5, colour = NA)+
-  geom_boxplot(data= EXP, aes(x = Day, y = Acc, fill = Condition), outlier.shape=NA, alpha= .45, width = .1, colour = "black") +
-   geom_point(data= emmean_dataframe, aes(x =Day, y = prob, fill=Condition), position= position_dodge(0.1), size=4)+
-  geom_errorbar( data= emmean_dataframe, aes(x=Day, ymin=prob-SE, ymax=prob+SE), width=0.05, colour="black", alpha=0.9, size=0.05) + #SD error bar 
-  geom_errorbar(data= emmean_dataframe, aes(x=Day, ymin=prob-ic, ymax=prob+ic), width=0.4, colour="red", alpha=0.9, size=0.05) + #C.I.
-    theme(
-      legend.key.size=unit(1.3, 'cm'),
-      legend.text=element_text(size=13),
-      plot.title = element_text(size=rel(2)),
-      panel.border = element_blank(),
-      panel.background = element_blank(),
-      axis.line = element_line(colour = "black"),
-      panel.grid.major.y = element_line( size=.1, color="#dedede" ),
-      axis.text.x=element_text(size=rel(1.5)),
-      axis.title.y=element_text(size=rel(1.4)),
-      axis.title.x = element_blank())
-pl # Acc is higher in day 2 for both conditions! 
-
+plot <- plotty(EXP, emmean_dataframe, 'Day',  'Acc', 'Condition', 'prob', 'Perfromance/Objective CF') 
+plot
 
 
 ### COMPONENTS (Color/Pic)####
@@ -693,16 +610,9 @@ emmean_dataframe <- summary(emmeans1)$emmeans
 Anova(two_w, type='III')
 summary(emmeans1)
 # summary
-sum <- EXP %>%
-  group_by(Stim, Condition) %>%
-  summarise(
-    n = n(), 
-    mean = mean(Acc),
-    sd = sd(Acc)
-  ) %>%
-  mutate( se = sd/sqrt(n)) %>%
-  mutate( ic=se * qt((1-0.05)/2 + .5, n-1))
+sum <- sum_2 (EXP, 'Stim', 'Condition', 'Acc')
 sum
+
 
 ## VISUALISATION
 # not really intuitive because 3-way interaction
@@ -718,6 +628,17 @@ sum
 ##########################################
   ### CORRELATIONS ###
 #########################################
+
+### Correlation plot ####
+overall_corr <- function(PSS, PTQ, x_lab, y_lab) {
+  dataframe <- data.frame(PSS, PTQ)
+  ggscatter(dataframe, x = "PSS", y = "PTQ",
+            add='reg.line', fullrange=TRUE,
+            conf.int=TRUE,
+            cor.coef=TRUE, cor.method='pearson',
+            xlab=x_lab, ylab=y_lab)+
+    geom_segment(aes(x = -4, y = -4, xend = 40, yend = 40), size= 1, colour='red')
+}
 
 ### CORR VAS-f difference score between two conditions (HCL and LCL)
 
