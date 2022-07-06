@@ -193,6 +193,18 @@ plotty <- function(data, Dataframe, xvar, yvar, fillvar, Mean, title){
 
 
 ### summary
+sum_3 <- function (data, var1, var2, var3, depvar){
+  data %>%
+    group_by(.data[[var1]], .data[[var2]], .data[[var3]]) %>%
+    summarise(
+      n = n(), 
+      mean = mean(.data[[depvar]]),
+      sd = sd(.data[[depvar]], na.rm=TRUE)
+    ) %>%
+    mutate( se = sd/sqrt(n)) %>%
+    mutate( ic=se * qt((1-0.05)/2 + .5, n-1))
+}
+
 sum_2 <- function (data, var1, var2, depvar){
   data %>%
     group_by(.data[[var1]], .data[[var2]]) %>%
@@ -215,6 +227,17 @@ sum_1 <- function (data, var1, depvar){
     ) %>%
     mutate( se = sd/sqrt(n)) %>%
     mutate( ic=se * qt((1-0.05)/2 + .5, n-1))
+}
+
+# distribution plot (e.g. for RT)
+distribution_plot <- function (data, var_name){
+  ggplot(data, aes(x = variable, y = value, fill=variable))+
+    geom_flat_violin(position = position_nudge(x = .2, y = 0),adjust =2)+
+    coord_flip()+
+    theme_cowplot()+
+    geom_point(position=position_jitter(width=.15), size=2)+
+    geom_boxplot(width= .10, outlier.shape = NA)+
+    theme(legend.position=var_name)
 }
 
 

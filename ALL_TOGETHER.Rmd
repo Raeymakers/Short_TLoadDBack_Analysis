@@ -20,7 +20,6 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ```{r message=FALSE, warning = FALSE}
 ##### Set environment #####
-
 library(tidyverse)
 library(effects)
 library(emmeans)
@@ -36,107 +35,94 @@ library(car)
 library(ggpubr)
 
 # Get and declare functions
-#Set working directory to the folder in which all CSV files are located
 setwd(dirname(rstudioapi::getActiveDocumentContext()$path))
 source("C:/Users/ASUSTeK/OneDrive/Documenten/Github/Short_TLoadDBack/functions.R") # file in the same directory for functions so they're together
-
+#Set working directory to the folder in which all CSV files are located
 Dir = "C:/Users/ASUSTeK/OneDrive/Documenten/Github/Short_TLoadDBack/Data/"
 setwd(Dir)
-
 ```
 
 ```{r message=FALSE, warning = FALSE}
+
 ##########################################
   ### PVT/VIGILANCE/RT ###
 #########################################
 
+#### PREPARATION ####
+
+## DOWNLOAD + CLEAN DATA
 #Download PVT data (this datafile is made in 'preprocessing')
 PVT <- read.csv(paste0(Dir, "PVT.csv"), header = TRUE, sep = )
-
-### Do like Borrogan : mean 1/RT
+# mean 1/RT
 PVT$RT <- 1/(PVT$RT/1000) #1/RT  ==> other result
 
-# we have 97 iDs. Each participant is in either LCL or HCL
+# we have 97 iDs. Each participant is in either LCL or HCL. calculate MeanRT per ptt
 for (i in 1:97) {
   PVT$MeanRT[PVT$ID==i & PVT$Test==1 & PVT$Day==1]= mean (PVT$RT[PVT$ID==i & PVT$Test==1 & PVT$Day==1])
   PVT$MeanRT[PVT$ID==i & PVT$Test==2 & PVT$Day==1]= mean (PVT$RT[PVT$ID==i & PVT$Test==2 & PVT$Day==1])
   PVT$MeanRT[PVT$ID==i & PVT$Test==1 & PVT$Day==2]= mean (PVT$RT[PVT$ID==i & PVT$Test==1 & PVT$Day==2])
   PVT$MeanRT[PVT$ID==i & PVT$Test==2 & PVT$Day==2]= mean (PVT$RT[PVT$ID==i & PVT$Test==2 & PVT$Day==2])
 }
-
-# remove duplicates: now only 1 datapoint per MeanRT
-#make dataframe with 1 measure per condition, participant and day
+# make dataframe with 1 measure per condition, participant and day: remove duplicate - now only 1 datapoint per MeanRT
 PVT<- PVT[PVT$Trial.Number==1,]
-length(unique(PVT$MeanRT))
-#388
-97*4
-
-#visualise
-#visualise RT's: from 0 to 10 seconds 
+length(unique(PVT$MeanRT))#388 =97*4
+# visualise RT's: from 0 to 10 seconds 
 d<-melt(data.frame(RT=c(PVT$MeanRT))) # we melt to wide format
-pl <- ggplot(d, aes(x = variable, y = value, fill=variable))+
-  geom_flat_violin(position = position_nudge(x = .2, y = 0),adjust =2)+
-  coord_flip()+
-  theme_cowplot()+
-  geom_point(position=position_jitter(width=.15), size=2)+
-  geom_boxplot(width= .10, outlier.shape = NA)+
-  theme(legend.position="MeanRT")
-pl
+distribution_plot (d, 'MeanRT')
 qqPlot(PVT$MeanRT) # clearly not a normal distribution: a big skew 
-
-# remove outliers? 
-outliers <- boxplot(PVT$MeanRT, plot=FALSE)$out
-PVT<- PVT[-which(PVT$MeanRT %in% outliers),]
-#visualise
-d<-melt(data.frame(RT=c(PVT$MeanRT))) # we melt to wide format
-pl<- ggplot(d, aes(x = variable, y = value, fill=variable))+
-  geom_flat_violin(position = position_nudge(x = .2, y = 0),adjust =2)+
-  coord_flip()+
-  theme_cowplot()+
-  geom_point(position=position_jitter(width=.15), size=2)+
-  geom_boxplot(width= .10, outlier.shape = NA)+
-  theme(legend.position="RT")
-pl
-qqPlot(PVT$MeanRT) #still not the best but already much better
 
 # make factors
 PVT$Day <- factor(PVT$Day)
 PVT$Test <- factor(PVT$Test)
 PVT$Condition <- factor(PVT$Condition)
-#check factors
-levels(PVT$Condition)
+#check factors: levels(PVT$Condition)
 
-#look only at before-test measure (test=1)
+# We look only at before-test (test=1) because we want to measure baseline vigilance
 PVT <- PVT[!(PVT$Test==2),] 
 #remove unnecessairy columns
 PVT = subset(PVT, select = -c(Local.Date, Participant.Private.ID, Task.Name, Trial.Number, Correct, timelimit))
 
-# summarize data per group
-sum <- group_by(PVT, Condition, Test, Day) %>%
-  summarise(
-    count = n(),
-    mean = mean(MeanRT, na.rm = TRUE),
-    sd = sd(RT, na.rm = TRUE))
-sum 
 
-ggboxplot(PVT, x = "Condition", y = "MeanRT", 
-          color = "Condition", palette = c("#00AFBB", "#E7B800"),
-          ylab = "MeanRT", xlab = "Condition")
+### CHECKING ASSUMPTIONS ####
 
-#normality
-PVT %>%
-  group_by(Day) %>%
-  shapiro_test(MeanRT) # normal distribution
-ggqqplot(PVT, 'MeanRT', facet.by='Condition')
-
-#statistics
+# Time x Condition 2-way ANOVA with interaction effect (what Borrogan did)
 res.aov2 <- aov(MeanRT ~ Condition * Day, data= PVT)
 summary(res.aov2)# no sign! this is good, means vigilance was same in all conditions
 
-#summary statistics
+# HOMOGENEITY OF VARIANCE
+plot(res.aov2, 1) # residuqls vs fits plot shows no evident relationship residuals and fitted values (means of groups)
+
+# NORMALITY
+aov_residuals <- residuals (object=res.aov2)
+shapiro.test(x=aov_residuals) # no normality! 
 PVT %>%
-  group_by(Day, Condition) %>%
-  get_summary_stats(MeanRT, type = "mean_sd")
+  group_by(Condition, Day) %>%
+  shapiro_test(MeanRT) # no normal distribution!
+#visualisation
+plot(res.aov2, 2) #clearly not normal
+ggqqplot(PVT, "MeanRT", ggtheme = theme_bw()) +
+  facet_grid(Day ~ Condition)
+ggqqplot(PVT, "MeanRT", ggtheme = theme_bw()) +
+  facet_grid( ~Condition) #  very obviously NOT a normal distribution
+
+# SPHERICITY: Mauchly's test
+x<-anova_test(data= PVT, dv= MeanRT, wid= ID, between= Condition, within= c(Day))
+get_anova_table(x, correction = c('GG')) #variances are NOT equal! 
+x$'Sphericity Corrections'
+
+# OUTLIERS
+summary(EXP$Acc)
+outliers <- boxplot(EXP$Acc, plot=FALSE)$out
+# remove 
+PVT2<- PVT[-which(PVT$MeanRT %in% outliers),]
+#visualise
+d<-melt(data.frame(RT=c(PVT2$MeanRT))) # we melt to wide format
+distribution_plot (d, 'MeanRT')
+qqPlot(PVT2$MeanRT) # stil not normal...
+
+# SUMMARIZE data per group
+sum<- sum_3(PVT, 'Condition', 'Test', 'Day', 'MeanRT' )
+sum 
 
 #visualize
 two_w <- lmer('MeanRT ~ Day * Condition + (1|ID)', data= PVT)
@@ -163,6 +149,13 @@ pl<- ggplot(PVT, aes(x= Day, y = MeanRT))+
 pl
 
 ### Borrogan also looked at RT coefficient of variation CV=SD/Mean 
+
+
+#https://www.frontiersin.org/articles/10.3389/fpsyg.2015.01171/full
+#https://stats.stackexchange.com/questions/254361/modeling-reaction-time-with-glmer
+# glmer with inverse link
+glmer(reaction ~ treatment * timep + (1|subjectNumber), data=., family = inverse.gaussian(link = "identity"))
+
 
 
 ```
@@ -630,15 +623,7 @@ sum
 #########################################
 
 ### Correlation plot ####
-overall_corr <- function(PSS, PTQ, x_lab, y_lab) {
-  dataframe <- data.frame(PSS, PTQ)
-  ggscatter(dataframe, x = "PSS", y = "PTQ",
-            add='reg.line', fullrange=TRUE,
-            conf.int=TRUE,
-            cor.coef=TRUE, cor.method='pearson',
-            xlab=x_lab, ylab=y_lab)+
-    geom_segment(aes(x = -4, y = -4, xend = 40, yend = 40), size= 1, colour='red')
-}
+
 
 ### CORR VAS-f difference score between two conditions (HCL and LCL)
 
@@ -658,46 +643,41 @@ overall_corr <- function(PSS, PTQ, x_lab, y_lab) {
 
 ## Corr PVT with Acc
 
+cor.test(my_data$wt, my_data$mpg,  method="kendall") # not Pearson because: not normal distribution
+cor.test(my_data$wt, my_data$mpg,  method = "spearman") # or Spearman
+
+### Correlation plot ####
+overall_corr <- function(var1, var2, x_lab, y_lab) {
+  dataframe <- data.frame(var1, var2)
+  ggscatter(dataframe, x = var1, y = var2,
+            add='reg.line', fullrange=TRUE,
+            conf.int=TRUE,
+            cor.coef=TRUE, cor.method='pearson',
+            xlab=x_lab, ylab=y_lab)+
+    geom_segment(aes(x = -4, y = -4, xend = 40, yend = 40), size= 1, colour='red')
+}
+
+var1<- VAS$Diff[VAS$Condition=='HCL']
+var2<- VAS$Diff[VAS$Condition=='LCL']
+x_lab= 'VAS-f HCL'
+y_lab= 'VAS-f LCL'
+dataframe <- data.frame(var1, var2)
+  ggscatter(dataframe, x = var1, y = var2,
+            add='reg.line', fullrange=TRUE,
+            conf.int=TRUE,
+            cor.coef=TRUE, cor.method='pearson',
+            xlab=x_lab, ylab=y_lab)+
+    geom_segment(aes(x = -4, y = -4, xend = 40, yend = 40), size= 1, colour='red')
 
 
-## PSS vs. PTQ
-# noPMS 
-PSS <- data$PSS[data$PMS=='noPMS']
-PTQ <- data$PTQ[data$PMS=='noPMS']
-x_lab= 'noPMS_PSS'
-y_lab='noPMS_PTQ'
-overall_corr(PSS, PTQ, x_lab, y_lab)
-# PMS
-PSS <- data$PSS[data$PMS=='PMS']
-PTQ <- data$PTQ[data$PMS=='PMS']
-x_lab= 'PMS_PSS'
-y_lab='PMS_PTQ'
-overall_corr(PSS, PTQ, x_lab, y_lab)
-# PMDD
-PSS <- data$PSS[data$PMS=='PMDD']
-PTQ <- data$PTQ[data$PMS=='PMDD']
-x_lab= 'PMDD_PSS'
-y_lab='PMDD_PTQ'
 overall_corr(PSS, PTQ, x_lab, y_lab)
 
 ## delta
-# noPMS
-PSS <- data$PSS[data$PMS=='noPMS'&data$Moment=='Foll']-data$PSS[data$PMS=='noPMS'&data$Moment=='Lut']
-PTQ <- data$PTQ[data$PMS=='noPMS'&data$Moment=='Foll']-data$PTQ[data$PMS=='noPMS'&data$Moment=='Lut']
-x_lab = 'noPMS_delta_PSS'
-y_lab = 'noPMS_delta_PTQ'
-overall_corr(PSS, PTQ, x_lab, y_lab)
 # PMS
 PSS <- data$PSS[data$PMS=='PMS'&data$Moment=='Foll']-data$PSS[data$PMS=='PMS'&data$Moment=='Lut']
 PTQ <- data$PTQ[data$PMS=='PMS'&data$Moment=='Foll']-data$PTQ[data$PMS=='PMS'&data$Moment=='Lut']
 x_lab = 'PMS_delta_PSS'
 y_lab = 'PMS_delta_PTQ'
-overall_corr(PSS, PTQ, x_lab, y_lab)
-#PMDD
-PSS <- data$PSS[data$PMS=='PMDD'&data$Moment=='Foll']-data$PSS[data$PMS=='PMDD'&data$Moment=='Lut']
-PTQ <- data$PTQ[data$PMS=='PMDD'&data$Moment=='Foll']-data$PTQ[data$PMS=='PMDD'&data$Moment=='Lut']
-x_lab = 'PMDD_delta_PSS'
-y_lab = 'PMDD_delta_PTQ'
 overall_corr(PSS, PTQ, x_lab, y_lab)
 
 
