@@ -1,11 +1,9 @@
 #############################
 #                           #
 ##  Function corresponding ##
-#     to PMS study code     #
+#     to TLoadDback    #
 #############################
-# Collection of functions used in preprocessingData.R & stateAnalysis.R & traitAnalysis.R & cronbachAlpha.R
-# Author: Mitchel Kappen
-# 10-3-2022
+
 
 library(ggplot2) # figures
 

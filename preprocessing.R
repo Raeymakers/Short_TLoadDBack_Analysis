@@ -276,6 +276,7 @@ data$Stim[grepl("pink", data$Stimulus)] = "Color"
 data$Stim[grepl("purple", data$Stimulus)] = "Color"
 data$Stim[grepl("red", data$Stimulus)] = "Color"
 data$Stim[grepl("yellow", data$Stimulus)] = "Color"
+data$Stim[grepl("white", data$Stimulus)] = "Color"
 data$Stim[grepl("black", data$Stimulus)] = "Color"
 data$Stim[grepl("green", data$Stimulus)] = "Color"
 

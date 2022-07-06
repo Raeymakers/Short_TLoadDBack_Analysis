@@ -1,0 +1,56 @@
+---
+title: "Correlations"
+author: "Sofie Raeymakers"
+date: "7/6/2022"
+output: html_document
+---
+
+---
+title: "PVT_VAS-f_analysis"
+author: "Sofie Raeymakers"
+date: "5/3/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+rm(list = ls()) # Clear environment
+cat("\014") # Clear console
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r message=FALSE, warning = FALSE}
+##### Set environment #####
+
+library(tidyverse)
+library(effects)
+library(emmeans)
+library(data.table)
+library(dplyr)
+library(ggplot2)
+library(MuMIn)
+library(effsize)
+library(reshape2)
+library(cowplot)
+library(car)
+library(ggpubr)
+
+# Get and declare functions
+#Set working directory to the folder in which all CSV files are located
+
+setwd(dirname(rstudioapi::getActiveDocumentContext()$path))
+source("C:/Users/ASUSTeK/OneDrive/Documenten/Github/Short_TLoadDBack/functions.R") # This is a file in the same directory where you can stash your functions so you can save them there and have them together
+
+Dir = "C:/Users/ASUSTeK/OneDrive/Documenten/Github/Short_TLoadDBack/Data/"
+setwd(Dir)
+
+#Download PVT data (this datafile is made in 'preprocessing')
+PVT <- read.csv(paste0(Dir, "PVT.csv"), header = TRUE, sep = )
+
+#Download VAS-f data
+VAS <- read.csv(paste0(Dir, "VAS.csv"), header = TRUE, sep = )
+#VAS has 'quantised: 1-11 instead of 0-10
+
+#Download EXP data
+EXP <- read.csv(paste0(Dir, "EXP.csv"), header = TRUE, sep = )
+
+```
