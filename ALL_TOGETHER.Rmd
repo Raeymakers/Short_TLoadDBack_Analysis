@@ -56,48 +56,58 @@ plotPrefix <- paste0(dirname(rstudioapi::getSourceEditorContext()$path),"/figure
 #### DOWNLOAD + CLEAN DATA ####
 
 #Download PVT data (this datafile is made in 'preprocessing')
-PVT <- read.csv(paste0(Dir, "PVT.csv"), header = TRUE, sep = )
+data <- read.csv(paste0(Dir, "PVT.csv"), header = TRUE, sep = )
 # mean 1/RT
-PVT$RT <- 1/(PVT$RT/1000) #1/RT  ==> other result
+data$RT <- 1/(data$RT/1000) #1/RT  ==> other result
 
 # we have 97 iDs. Each participant is in either LCL or HCL. calculate MeanRT per ptt
-for (i in 1:97) {
-  PVT$MeanRT[PVT$ID==i & PVT$Test==1 & PVT$Day==1]= mean (PVT$RT[PVT$ID==i & PVT$Test==1 & PVT$Day==1])
-  PVT$MeanRT[PVT$ID==i & PVT$Test==2 & PVT$Day==1]= mean (PVT$RT[PVT$ID==i & PVT$Test==2 & PVT$Day==1])
-  PVT$MeanRT[PVT$ID==i & PVT$Test==1 & PVT$Day==2]= mean (PVT$RT[PVT$ID==i & PVT$Test==1 & PVT$Day==2])
-  PVT$MeanRT[PVT$ID==i & PVT$Test==2 & PVT$Day==2]= mean (PVT$RT[PVT$ID==i & PVT$Test==2 & PVT$Day==2])
-}
+# for (i in 1:97) {
+#   data$Mean[data$ID==i & data$Test==1 & data$Day==1]= mean (data$RT[data$ID==i & data$Test==1 & data$Day==1])
+#   data$Mean[data$ID==i & data$Test==2 & data$Day==1]= mean (data$RT[data$ID==i & data$Test==2 & data$Day==1])
+#   data$Mean[data$ID==i & data$Test==1 & data$Day==2]= mean (data$RT[data$ID==i & data$Test==1 & data$Day==2])
+#   data$Mean[data$ID==i & data$Test==2 & data$Day==2]= mean (data$RT[data$ID==i & data$Test==2 & data$Day==2])
+# }
+# PVT <- data
+
+PVT1 <- group_by(data, Test, Day, Condition, ID) %>%
+  summarise(
+    count = n(),
+    Mean = mean(RT, na.rm = TRUE)
+  )
+
 # make dataframe with 1 measure per condition, participant and day: remove duplicate - now only 1 datapoint per MeanRT
 PVT<- PVT[PVT$Trial.Number==1,]
-length(unique(PVT$MeanRT))#388 =97*4
+length(unique(PVT$Mean))#388 =97*4
 # visualise RT's: from 0 to 10 seconds 
-d<-melt(data.frame(RT=c(PVT$MeanRT))) # we melt to wide format
-distribution_plot (d, 'MeanRT')
-qqPlot(PVT$MeanRT) # clearly not a normal distribution: a big skew 
+d<-melt(data.frame(RT=c(PVT$Mean))) # we melt to wide format
+distribution_plot (d, 'Mean')
+qqPlot(PVT$Mean) # clearly not a normal distribution: a big skew 
 
 # We look only at before-test (test=1) because we want to measure baseline vigilance
 PVT <- PVT[!(PVT$Test==2),] 
 #remove unnecessairy columns
 PVT = subset(PVT, select = -c(Local.Date, Participant.Private.ID, Task.Name, Trial.Number, Correct, timelimit))
+data <- PVT
+
 ## CREATE DATAFRAME  with the MeanRT per ID, Day, Condition
 PVT <- group_by(PVT, Condition, Day, ID) %>%
   summarise(
     count = n(),
-    MeanRT = mean(MeanRT, na.rm = TRUE)
+    MeanRT = mean(Mean, na.rm = TRUE)
   )
 PVT <- as.data.frame(PVT)
 head(PVT) 
 
 # make factors
 PVT$Day <- factor(PVT$Day)
-PVT$Test <- factor(PVT$Test)
+PVT$ID <- factor(PVT$ID)
 PVT$Condition <- factor(PVT$Condition)
 #check factors: levels(PVT$Condition)
 
 ### CHECKING ASSUMPTIONS ####
 
 # Time x Condition 2-way ANOVA with interaction effect (what Borrogan did)
-res.aov2 <- aov(MeanRT ~ Condition * Day, data= PVT)
+res.aov2 <- aov(Mean ~ Condition * Day, data= PVT)
 summary(res.aov2)# no sign! this is good, means vigilance was same in all conditions
 
 # HOMOGENEITY OF VARIANCE
@@ -108,39 +118,35 @@ aov_residuals <- residuals (object=res.aov2)
 shapiro.test(x=aov_residuals) # no normality! 
 PVT %>%
   group_by(Condition, Day) %>%
-  shapiro_test(MeanRT) # no normal distribution!
+  shapiro_test(Mean) # no normal distribution!
 #visualisation
 plot(res.aov2, 2) #clearly not normal
-ggqqplot(PVT, "MeanRT", ggtheme = theme_bw()) +
+ggqqplot(PVT, "Mean", ggtheme = theme_bw()) +
   facet_grid(Day ~ Condition)
-ggqqplot(PVT, "MeanRT", ggtheme = theme_bw()) +
+ggqqplot(PVT, "Mean", ggtheme = theme_bw()) +
   facet_grid( ~Condition) #  very obviously NOT a normal distribution
 
 # SPHERICITY: Mauchly's test
-x<-anova_test(data= PVT, dv= MeanRT, wid= ID, between= Condition, within= c(Day))
+x<-anova_test(data= PVT, dv= Mean, wid= ID, between= Condition, within= c(Day))
 get_anova_table(x, correction = c('GG')) #variances are NOT equal! 
 x$'Sphericity Corrections'
 
 # OUTLIERS
-summary(PVT$MeanRT)
-outliers <- boxplot(PVT$MeanRT, plot=FALSE)$out
+summary(PVT$Mean)
+outliers <- boxplot(PVT$Mean, plot=FALSE)$out
 # remove 
-PVT<- PVT[-which(PVT$MeanRT %in% outliers),]
+PVT<- PVT[-which(PVT$Mean %in% outliers),]
 #visualise
-d<-melt(data.frame(RT=c(PVT$MeanRT))) # we melt to wide format
-distribution_plot (d, 'MeanRT')
-qqPlot(PVT$MeanRT) # stil not normal...
-
-# SUMMARIZE data per group
-sum<- sum_2(PVT, 'Condition', 'Day', 'MeanRT' )
-sum
+d<-melt(data.frame(RT=c(PVT$Mean))) # we melt to wide format
+distribution_plot (d, 'Mean')
+qqPlot(PVT$Mean) # stil not normal...
 
 ### ANALYSIS ###
 # RT not normally distributed
 #https://www.frontiersin.org/articles/10.3389/fpsyg.2015.01171/full
 #https://stats.stackexchange.com/questions/254361/modeling-reaction-time-with-glmer
 # => glmer with inverse link
-two_w <- glmer (MeanRT~Condition * Day + (1|ID), data= PVT, family= inverse.gaussian(link="identity"))
+two_w <- glmer (Mean~Condition * Day + (1|ID), data= PVT, family= inverse.gaussian(link="identity"))
 # two_w <- glmer(Acc ~ Condition * Time + (1 | ID), weights = count,family = binomial, data = EXP)
 emmeans1<- emmeans(two_w, pairwise ~ Condition * Day, adjust ="fdr", type = "response")
 emmean_dataframe <- summary(emmeans1)$emmeans
@@ -154,96 +160,31 @@ sum
 ## VISUALISATION
 # boxplot 
 bxp <- ggboxplot(
-  PVT, x = "Day", y = "MeanRT",
+  PVT, x = "Day", y = "Mean",
   color = "Condition", palette = "jco")
 bxp
 
 ## plot with error bars
-pl <- plotty(PVT, emmean_dataframe, 'Day',  'MeanRT', 'Condition', 'emmean', 'Vigilance') 
+pl <- plotty(PVT, emmean_dataframe, 'Day',  'Mean', 'Condition', 'emmean', 'Vigilance') 
 pl
-
 
 
 ### Borrogan also looked at RT coefficient of variation CV=SD/Mean ###
 
 ## CREATE DATAFRAME  with the MeanRT per ID, Day, Condition
-PVT <- group_by(PVT, Condition, Day, ID) %>%
+PVT <- group_by(data, Condition, Day, ID) %>%
   summarise(
     count = n(),
-    CV = sd(MeanRT, na.rm = TRUE)/mean(MeanRT, na.rm = TRUE)
+    CV = sd(Mean, na.rm = TRUE)/mean(MeanRT, na.rm = TRUE)
   )
 PVT <- as.data.frame(PVT)
 head(PVT) 
 
 # make factors
 PVT$Day <- factor(PVT$Day)
-PVT$Test <- factor(PVT$Test)
+PVT$ID <- factor(PVT$ID)
 PVT$Condition <- factor(PVT$Condition)
 #check factors: levels(PVT$Condition)
-
-### CHECKING ASSUMPTIONS ####
-
-# Time x Condition 2-way ANOVA with interaction effect (what Borrogan did)
-res.aov2 <- aov(CV ~ Condition * Day, data= PVT)
-summary(res.aov2)# no sign! this is good, means vigilance was same in all conditions
-
-# HOMOGENEITY OF VARIANCE
-plot(res.aov2, 1) # residuqls vs fits plot shows no evident relationship residuals and fitted values (means of groups)
-
-# NORMALITY
-aov_residuals <- residuals (object=res.aov2)
-shapiro.test(x=aov_residuals) # no normality! 
-PVT %>%
-  group_by(Condition, Day) %>%
-  shapiro_test(CV) # no normal distribution!
-#visualisation
-plot(res.aov2, 2) #clearly not normal
-ggqqplot(PVT, "CV", ggtheme = theme_bw()) +
-  facet_grid(Day ~ Condition)
-ggqqplot(PVT, "CV", ggtheme = theme_bw()) +
-  facet_grid( ~Condition) #  very obviously NOT a normal distribution
-
-# SPHERICITY: Mauchly's test
-x<-anova_test(data= PVT, dv= CV, wid= ID, between= Condition, within= c(Day))
-get_anova_table(x, correction = c('GG')) #variances are NOT equal! 
-x$'Sphericity Corrections'
-
-# OUTLIERS
-summary(PVT$CV)
-outliers <- boxplot(PVT$CV, plot=FALSE)$out
-# remove 
-PVT<- PVT[-which(PVT$CV %in% outliers),]
-#visualise
-d<-melt(data.frame(RT=c(PVT$CV))) # we melt to wide format
-distribution_plot (d, 'CV')
-qqPlot(PVT$CV) # stil not normal...
-
-### ANALYSIS ###
-# RT not normally distributed
-#https://www.frontiersin.org/articles/10.3389/fpsyg.2015.01171/full
-#https://stats.stackexchange.com/questions/254361/modeling-reaction-time-with-glmer
-# => glmer with inverse link
-two_w <- glmer (CV~Condition * Day + (1|ID), data= PVT, family= inverse.gaussian(link="identity"))
-# two_w <- glmer(Acc ~ Condition * Time + (1 | ID), weights = count,family = binomial, data = EXP)
-emmeans1<- emmeans(two_w, pairwise ~ Condition * Day, adjust ="fdr", type = "response")
-emmean_dataframe <- summary(emmeans1)$emmeans
-
-Anova(two_w, type='III')
-summary(emmeans1)
-#summary 
-sum <- sum_2 (PVT, 'Day', 'Condition', 'CV')
-sum
-
-## VISUALISATION
-# boxplot 
-bxp <- ggboxplot(
-  PVT, x = "Day", y = "CV",
-  color = "Condition", palette = "jco")
-bxp
-
-## plot with error bars
-pl <- plotty(PVT, emmean_dataframe, 'Day',  'CV', 'Condition', 'emmean', 'Vigilance') 
-pl
 
 
 ```
@@ -259,50 +200,53 @@ pl
 # we want to know if there is a difference in VAS before and after Test
 
 #Download VAS-f data
-VAS <- read.csv(paste0(Dir, "VAS.csv"), header = TRUE, sep = )#VAS has 'quantised: 1-11 instead of 0-10
+data <- read.csv(paste0(Dir, "VAS.csv"), header = TRUE, sep = )#VAS has 'quantised: 1-11 instead of 0-10
 
 # remove unnecessary columns
-VAS = subset(VAS, select = -c(Local.Date, Participant.Private.ID, Task.Name))  
-VAS <-VAS[(grepl("quantised", VAS$Question.Key)),]
+data = subset(data, select = -c(Local.Date, Participant.Private.ID, Task.Name))  
+data <-data[(grepl("quantised", data$Question.Key)),]
 
-# take mean of the scale per participant, per day/test. 
-for (i in 1:97) {
-  VAS$Mean[VAS$ID==i & VAS$Test==1 & VAS$Day==1]= mean (VAS$Response[VAS$ID==i & VAS$Test==1 & VAS$Day==1])
-  VAS$Mean[VAS$ID==i & VAS$Test==2 & VAS$Day==1]= mean (VAS$Response[VAS$ID==i & VAS$Test==2 & VAS$Day==1])
-  VAS$Mean[VAS$ID==i & VAS$Test==1 & VAS$Day==2]= mean (VAS$Response[VAS$ID==i & VAS$Test==1 & VAS$Day==2])
-  VAS$Mean[VAS$ID==i & VAS$Test==2 & VAS$Day==2]= mean (VAS$Response[VAS$ID==i & VAS$Test==2 & VAS$Day==2])
-}
-
-# check if conditions are equal
-length(VAS$Mean[VAS$Test==1 & VAS$Day ==1 & VAS$ID==1])
-length(VAS$Mean[VAS$Test==2 & VAS$Day ==1 & VAS$ID==1])
-length(VAS$Mean[VAS$Test==1 & VAS$Day ==2 & VAS$ID==1])
-length(VAS$Mean[VAS$Test==2 & VAS$Day ==2 & VAS$ID==1])
-
-#make dataframe with 1 measure per condition
-VAS<- VAS[VAS$Question.Key=='0-quantised',]
-
+# # take mean of the scale per participant, per day/test.
+# for (i in 1:97) {
+#   data$Mean[data$ID==i & data$Test==1 & data$Day==1]= mean (data$Response[data$ID==i & data$Test==1 & data$Day==1])
+#   data$Mean[data$ID==i & data$Test==2 & data$Day==1]= mean (data$Response[data$ID==i & data$Test==2 & data$Day==1])
+#   data$Mean[data$ID==i & data$Test==1 & data$Day==2]= mean (data$Response[data$ID==i & data$Test==1 & data$Day==2])
+#   data$Mean[data$ID==i & data$Test==2 & data$Day==2]= mean (data$Response[data$ID==i & data$Test==2 & data$Day==2])
+# }
+# VAS<-data
+# #make dataframe with 1 measure per condition
+# VAS<- VAS[VAS$Question.Key=='0-quantised',]
 # difference score, devide by baseline (pre TloadBack) as a function of group (Day/condition): (2-1)/1
-for (i in 1:97) {
-  VAS$Diff[VAS$ID==i & VAS$Day==1] = 
-    ((VAS$Mean[VAS$Test==2 & VAS$ID==i & VAS$Day==1]- VAS$Mean[VAS$Test==1 & VAS$ID==i & VAS$Day==1])/VAS$Mean[VAS$Test==1 & VAS$ID==i & VAS$Day==1])
-  VAS$Diff[VAS$ID==i & VAS$Day==2] = 
-    ((VAS$Mean[VAS$Test==2 & VAS$ID==i & VAS$Day==1]- VAS$Mean[VAS$Test==1 & VAS$ID==i & VAS$Day==2])/VAS$Mean[VAS$Test==1 & VAS$ID==i & VAS$Day==2])
-}
+# for (i in 1:97) {
+#   VAS$Diff[VAS$ID==i & VAS$Day==1] =
+#     ((VAS$Mean[VAS$Test==2 & VAS$ID==i & VAS$Day==1]- VAS$Mean[VAS$Test==1 & VAS$ID==i & VAS$Day==1])/VAS$Mean[VAS$Test==1 & VAS$ID==i & VAS$Day==1])
+#   VAS$Diff[VAS$ID==i & VAS$Day==2] =
+#     ((VAS$Mean[VAS$Test==2 & VAS$ID==i & VAS$Day==1]- VAS$Mean[VAS$Test==1 & VAS$ID==i & VAS$Day==2])/VAS$Mean[VAS$Test==1 & VAS$ID==i & VAS$Day==2])
+# }
+
+
+
+VAS <- group_by(data, Test, Day, Condition, ID) %>%
+  summarise(
+    count = n(),
+    Mean = mean(Response, na.rm = TRUE)
+  )
 
 #summary data
-sum_2(VAS, 'Condition', 'Day', 'Diff' )
+sum_2(VAS, 'Condition', 'Day', 'Mean' )
 
 #factors
 VAS$Day <- as.factor(VAS$Day)
-VAS$Test <- as.factor(VAS$Test)
 VAS$Condition <- as.factor(VAS$Condition)
 VAS$ID <- as.factor(VAS$ID)
+names(VAS)[names(VAS)=="Test"] <- "Time"
+VAS$Time <- as.factor(VAS$Time)
 
+### MEAN IPV DIFF ####
 
 ### CHECKING ASSUMPTIONS ####
 # Time x Condition 2-way ANOVA with interaction effect (what Borrogan did)
-res.aov2 <- aov(Diff ~ Condition * Day, data= VAS)
+res.aov2 <- aov(Mean ~ Condition * Day, data= VAS)
 summary(res.aov2)# no sign! this is good, means vigilance was same in all conditions
 
 # HOMOGENEITY OF VARIANCE
@@ -313,7 +257,7 @@ aov_residuals <- residuals (object=res.aov2)
 shapiro.test(x=aov_residuals) # no normality! 
 VAS %>%
   group_by(Condition, Day) %>%
-  shapiro_test(Diff) # no normal distribution!
+  shapiro_test(Mean) # no normal distribution!
 #visualisation
 plot(res.aov2, 2) #clearly not normal
 ggqqplot(VAS, "Diff", ggtheme = theme_bw()) +
@@ -322,24 +266,25 @@ ggqqplot(VAS, "Diff", ggtheme = theme_bw()) +
   facet_grid( ~Condition) #  very obviously NOT a normal distribution
 
 # SPHERICITY: Mauchly's test
-x<-anova_test(data= PVT, dv= CV, wid= ID, between= Condition, within= c(Day))
+x<-anova_test(data= VAS, dv= CV, wid= ID, between= Condition, within= c(Day))
 get_anova_table(x, correction = c('GG')) #variances are NOT equal! 
 x$'Sphericity Corrections'
 
 # OUTLIERS
-summary(VAS$Diff)
-outliers <- boxplot(VAS$Diff, plot=FALSE)$out
+summary(VAS$Mean)
+outliers <- boxplot(VAS$Mean, plot=FALSE)$out
 # remove ? 
-VAS<- VAS[-which(VAS$Diff %in% outliers),]
+# VAS<- VAS[-which(VAS$Diff %in% outliers),]
 #visualise
-d<-melt(data.frame(VAS=c(VAS$Diff))) # we melt to wide format
-distribution_plot (d, 'Diff')
-qqPlot(VAS$Diff) # 
+d<-melt(data.frame(VAS=c(VAS$Mean))) # we melt to wide format
+distribution_plot (d, 'Mean')
+qqPlot(VAS$Mean) # 
 # log transform data
 # PVT$RT = log(PVT$MeanRT)
 
 ## ANALYSIS 
-two_w <- lmer('Diff ~ Day * Condition + (1|ID)', data= VAS)
+# we use Poisson because the data is highly positively skewed
+two_w <- glmer( ~ Condition * Day + (1 | ID), family = poisson, data = VAS)
 emmeans1<- emmeans(two_w, pairwise ~ Condition * Day, adjust ="fdr", type = "response")
 emmean_dataframe <- summary(emmeans1)$emmeans
 
@@ -355,7 +300,7 @@ sum
 bxp <- ggboxplot(
   VAS, x = "Day", y = "Diff",
   color = "Condition", palette = "jco")
-bxp
+bxp 
 
 ## plot with error bars
 max_y<-max(VAS$Diff)
@@ -367,21 +312,16 @@ pl <- plotty(VAS, emmean_dataframe, 'Day',  'Diff', 'Condition', 'emmean', 'subj
 ggsave(pl, file=paste0(plotPrefix, "VAS_Plot.jpeg"), width = 2500, height = 1500, dpi = 300, units = "px")
 pl
 
-
-
 ### just Condition ###
 
 one_w <- lm(Diff~Condition , data=VAS)
 emmeans1<- emmeans(one_w, pairwise ~ Condition, adjust ="fdr", type = "response")
 emmeans1<-data.frame(emmeans1)
 emmeans1<-emmeans1[-c(3),]
-ggplot(emmeans1, aes(Condition, emmean)) +        # ggplot2 plot with confidence intervals
-  geom_point() +
-  geom_errorbar(aes(ymin = lower.CL, ymax = upper.CL))
-
-
+#summary 
 sum <- sum_1 (VAS, 'Condition', 'Diff')
 sum
+
 ## plot 
 ### using standard error
 ggplot(sum) + 
@@ -393,17 +333,14 @@ ggplot(sum) +
   geom_bar( aes(x=Condition, y=mean), stat="identity", fill=c("black", "lightgrey"), alpha=0.5) +
   geom_errorbar( aes(x=Condition, ymin=mean-ic, ymax=mean+ic), width=0.4, colour="white", alpha=0.9, size=1.5) +
   ggtitle("Experiment 1: Overall Overall difference VAS-f - using confidence interval")
-
+ggplot(emmeans1, aes(Condition, emmean)) +        # ggplot2 plot with confidence intervals
+  geom_point() +
+  geom_errorbar(aes(ymin = lower.CL, ymax = upper.CL))
 
 # one sample t-tests
 VAS1 <- VAS[VAS$Day == 1,] 
 cohen.d(VAS1$Diff, f = NA, paired = TRUE, mu = 0.5)
 
-
-
-
-
-### CORR VAS-f difference score between two conditions (HCL and LCL)
 
 
 ```
@@ -450,32 +387,32 @@ length(data$Time[is.na(data$Time)]) #NAs, should be 0
 
 
 ## CREATE DATAFRAME  with the Acc prop_correct per ID, Time, Day, Condition
-EXP <- group_by(data, Condition, Day, Time, ID, Stim) %>%
+EXP <- group_by(data, Condition, Day, Time, ID) %>%
   summarise(
     count = n(),
-    Acc = mean(prop_correct, na.rm = TRUE)
+    Mean = mean(prop_correct, na.rm = TRUE)
   )
 EXP <- as.data.frame(EXP)
-head(EXP) # mean Acc (prop_correct) per ID, Time, Day and Condition
+head(EXP) # mean Mean (prop_correct) per ID, Time, Day and Condition
 
 # set factors
 EXP$Time <- as.factor(EXP$Time)
 EXP$Condition <- as.factor(EXP$Condition)
 EXP$Day <- as.factor(EXP$Day)
 EXP$ID <- as.factor(EXP$ID)
-EXP$Stim <- as.factor(EXP$Stim)
+
 
 
 ### CHECKING ASSUMPTIONS ####
 
 # Time x Condition 2-way ANOVA with interaction effect
-res.aov2 <- aov(Acc ~ Condition*Time, data= EXP)
+res.aov2 <- aov(Mean ~ Condition*Time, data= EXP)
 summary(res.aov2)
 
 ## HOMOGENEITY OF VARIANCE
 #Levene's test homogeneity variances
-leveneTest(Acc~ Time * Condition, data= EXP) # no homogeneity! problem! 
-box_m(EXP[, 'Acc', drop=FALSE], EXP$Condition) # no homogeneity of variance
+leveneTest(Mean~ Time * Condition, data= EXP) # no homogeneity! problem! 
+box_m(EXP[, 'Mean', drop=FALSE], EXP$Condition) # no homogeneity of variance
 #visualisation
 plot(res.aov2, 1) # residuqls vs fits plot shows no evident relationship residuals and fitted values (means of groups)
 
@@ -484,41 +421,41 @@ aov_residuals <- residuals (object=res.aov2)
 shapiro.test(x=aov_residuals) # no normality! 
 EXP %>%
   group_by(Condition, Time) %>%
-  shapiro_test(Acc) # no normal distribution!
+  shapiro_test(Mean) # no normal distribution!
 #visualisation
 plot(res.aov2, 2) #clearly not normal
-ggqqplot(EXP, "Acc", ggtheme = theme_bw()) +
+ggqqplot(EXP, "Mean", ggtheme = theme_bw()) +
   facet_grid(Time ~ Condition)
-ggqqplot(EXP, "Acc", ggtheme = theme_bw()) +
+ggqqplot(EXP, "Mean", ggtheme = theme_bw()) +
   facet_grid( ~Condition) #  very obviously NOT a normal distribution
 
 ## SPHERICITY: Mauchly's test
-x<-anova_test(data= EXP, dv= Acc, wid= ID, between= Condition, within= c(Time, Day))
+x<-anova_test(data= EXP, dv= Mean, wid= ID, between= Condition, within= c(Time, Day))
 get_anova_table(x, correction = c('GG')) #variances are NOT equal! 
 x$'Sphericity Corrections'
 
 ## OUTLIERS
 EXP %>%
   group_by(Condition, Time) %>%
-  identify_outliers(Acc)
+  identify_outliers(Mean)
  outliers <- boxplot(EXP$prop_correct, plot=FALSE)$out
-summary(EXP$Acc)
-outliers <- boxplot(EXP$Acc, plot=FALSE)$out
+summary(EXP$Mean)
+outliers <- boxplot(EXP$Mean, plot=FALSE)$out
 
 #remove outliers? Maybe not necessary
 #remove under 3? (sign not paying attention? a bit arbitrary)
-#EXP <-  EXP[!EXP$Acc<0.3,]
+#EXP <-  EXP[!EXP$Mean<0.3,]
 #remove outliers outside of quantiles
-list_quantiles <- tapply(EXP$Acc, EXP$Condition, quantile)
+list_quantiles <- tapply(EXP$Mean, EXP$Condition, quantile)
 Q1s <- sapply(1:2, function(i) list_quantiles[[i]][2])
 Q3s <- sapply(1:2, function(i) list_quantiles[[i]][4])
-IQRs <- tapply(EXP$Acc, EXP$Condition, IQR)
+IQRs <- tapply(EXP$Mean, EXP$Condition, IQR)
 Lowers <- Q1s - 1.5*IQRs
 Uppers <- Q3s + 1.5*IQRs
 datas <- split(EXP, EXP$Condition)
 data_no_outlier <- NULL
 for (i in 1:2){
-out <- subset(datas[[i]], datas[[i]]$Acc > Lowers[i] & datas[[i]]$Acc < Uppers[i])
+out <- subset(datas[[i]], datas[[i]]$Mean > Lowers[i] & datas[[i]]$Mean < Uppers[i])
 data_no_outlier <- rbind(data_no_outlier, out)
 }
 EXP<- as.data.frame(data_no_outlier)
@@ -530,14 +467,14 @@ length(unique(EXP$ID[EXP$Condition=='HCL']))
 ## SOLUTION: 
 #even after log transform and removing outliers we have clearly not a normal distribution 
 # so we need to use GLM. https://stats.stackexchange.com/questions/189115/fitting-a-binomial-glmm-glmer-to-a-response-variable-that-is-a-proportion-or-f
-#BINOMIAL because the accuracy is between 0 and 1
+#BINOMIAL because the Meanuracy is between 0 and 1
 # it is a (continuous) proportion: we need to use the 'weights' argument for the number of trials that lead to the proportion
 
 
 ### CONDITION * TIME ###
 
 ## STATISTICAL TEST
-two_w <- glmer(Acc ~ Condition * Time + (1 | ID), weights = count,
+two_w <- glmer(Mean ~ Condition * Time + (1 | ID), weights = count,
    family = binomial, data = EXP)
 emmeans1<- emmeans(two_w, pairwise ~ Condition * Time, adjust ="fdr", type = "response")
 emmean_dataframe <- summary(emmeans1)$emmeans
@@ -545,45 +482,45 @@ emmean_dataframe <- summary(emmeans1)$emmeans
 Anova(two_w, type='III')
 summary(emmeans1)
 #summary 
-sum <- sum_2 (EXP, 'Time', 'Condition', 'Acc')
+sum <- sum_2 (EXP, 'Time', 'Condition', 'Mean')
 sum
 
 ## VISUALISATION
 # boxplot 
 bxp <- ggboxplot(
-  EXP, x = "Time", y = "Acc",
+  EXP, x = "Time", y = "Mean",
   color = "Condition", palette = "jco")
 bxp
 
 ## plot with error bars
-pl <- plotty(EXP, emmean_dataframe, 'Time',  'Acc', 'Condition', 'prob', 'Performance/Objective CF') 
+pl <- plotty(EXP, emmean_dataframe, 'Time',  'Mean', 'Condition', 'prob', 'Performance/Objective CF') 
 pl
 
 ### CONDITION ###
 ## STATISTICAL TEST
-one_w <- glmer(Acc ~ Condition  + (1 | ID), weights = count,
+one_w <- glmer(Mean ~ Condition  + (1 | ID), weights = count,
    family = binomial, data = EXP)
 emmeans1<- emmeans(one_w, pairwise ~ Condition, adjust ="fdr", type = "response")
 emmean_dataframe <- summary(emmeans1)$emmeans
 
 Anova(one_w, type='III')
-summary(emmeans1)# LCL clearly has higher Acc: 0.89 for LCL and 0.62 for HCL
+summary(emmeans1)# LCL clearly has higher Mean: 0.89 for LCL and 0.62 for HCL
 
 ##VISUALISATION
 # boxplot 
 bxp <- ggboxplot(
-  EXP, x = "Condition", y = "Acc", palette = "jco")
+  EXP, x = "Condition", y = "Mean", palette = "jco")
 bxp
 
 #  plot
-pl <- one_w_plot(EXP, emmean_dataframe, 'Condition', 'Acc', 'prob', 'Performance/Objective CF')
+pl <- one_w_plot(EXP, emmean_dataframe, 'Condition', 'Mean', 'prob', 'Performance/Objective CF')
 pl
 
 
 ####  DAY 1 vs DAY 2 #####
 
 ## STATISTICAL TEST
-two_w <- glmer(Acc ~ Condition * Day + (1 | ID), weights = count,
+two_w <- glmer(Mean ~ Condition * Day + (1 | ID), weights = count,
    family = binomial, data = EXP)
 emmeans1<- emmeans(two_w, pairwise ~ Condition * Day, adjust ="fdr", type = "response")
 emmean_dataframe <- summary(emmeans1)$emmeans
@@ -591,12 +528,12 @@ emmean_dataframe <- summary(emmeans1)$emmeans
 Anova(two_w, type='III')
 summary(emmeans1)
 #summary  
-sum <- sum_2 (EXP, 'Day', 'Condition', 'Acc')
+sum <- sum_2 (EXP, 'Day', 'Condition', 'Mean')
 sum
 
 ## VISUALISATION
 # plot with error bars
-plot <- plotty(EXP, emmean_dataframe, 'Day',  'Acc', 'Condition', 'prob', 'Perfromance/Objective CF') 
+plot <- plotty(EXP, emmean_dataframe, 'Day',  'Mean', 'Condition', 'prob', 'Perfromance/Objective CF') 
 plot
 
 
@@ -607,8 +544,23 @@ plot
 # interaction and main effect
 # to indicate higher complexity WMM component (pics) compared to balls 
 
+EXP <- group_by(data, Condition, Day, Time, ID, Stim) %>%
+  summarise(
+    count = n(),
+    Mean = mean(prop_correct, na.rm = TRUE)
+  )
+EXP <- as.data.frame(EXP)
+head(EXP) # mean Mean (prop_correct) per ID, Time, Day and Condition
+
+# set factors
+EXP$Time <- as.factor(EXP$Time)
+EXP$Condition <- as.factor(EXP$Condition)
+EXP$Day <- as.factor(EXP$Day)
+EXP$ID <- as.factor(EXP$ID)
+EXP$Stim <- as.factor(EXP$Stim)
+
 ## STATISTICAL TEST
-two_w <- glmer(Acc ~ Condition * Time * Stim + (1 | ID), weights = count,
+two_w <- glmer(Mean ~ Condition * Time * Stim + (1 | ID), weights = count,
    family = binomial, data = EXP)
 emmeans1<- emmeans(two_w, pairwise ~ Condition * Time * Stim, adjust ="fdr", type = "response")
 emmean_dataframe <- summary(emmeans1)$emmeans
@@ -616,14 +568,14 @@ emmean_dataframe <- summary(emmeans1)$emmeans
 Anova(two_w, type='III')
 summary(emmeans1)
 # summary
-sum <- sum_2 (EXP, 'Stim', 'Condition', 'Acc')
+sum <- sum_2 (EXP, 'Stim', 'Condition', 'Mean')
 sum
 
 
 ## VISUALISATION
 # not really intuitive because 3-way interaction
 
-## CORR Acc score between two conditions (HCL and LCL)
+## CORR Mean score between two conditions (HCL and LCL)
 
 ```
 
@@ -641,20 +593,20 @@ sum
 ### CORR VAS-f difference score between two conditions (HCL and LCL)
 
 
-## CORR Acc score between two conditions (HCL and LCL)
+## CORR Mean score between two conditions (HCL and LCL)
 
 
-## Pearson coeff  between delta (change) of VASf and delta (change) of Acc during first/second half 
+## Pearson coeff  between delta (change) of VASf and delta (change) of Mean during first/second half 
 
 ## Test-restest corr betweeen VAS f Day 1 and Day 2 in HCL and LCL
 
-# Test-restest corr Acc day 1 and day 2 in HCL and LCL
+# Test-restest corr Mean day 1 and day 2 in HCL and LCL
 
 ## correlation VASf with PVT
 
-## corr VASf with Acc
+## corr VASf with Mean
 
-## Corr PVT with Acc
+## Corr PVT with Mean
 
 cor.test(my_data$wt, my_data$mpg,  method="kendall") # not Pearson because: not normal distribution
 cor.test(my_data$wt, my_data$mpg,  method = "spearman") # or Spearman
