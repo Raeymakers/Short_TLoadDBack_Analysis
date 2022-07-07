@@ -68,35 +68,29 @@ data$RT <- 1/(data$RT/1000) #1/RT  ==> other result
 #   data$Mean[data$ID==i & data$Test==2 & data$Day==2]= mean (data$RT[data$ID==i & data$Test==2 & data$Day==2])
 # }
 # PVT <- data
+# # make dataframe with 1 measure per condition, participant and day: remove duplicate - now only 1 datapoint per MeanRT
+# PVT<- PVT[PVT$Trial.Number==1,]
+# length(unique(PVT$Mean))#388 =97*4
+# # We look only at before-test (test=1) because we want to measure baseline vigilance
+# PVT <- PVT[!(PVT$Test==2),] 
+# #remove unnecessairy columns
+# PVT = subset(PVT, select = -c(Local.Date, Participant.Private.ID, Task.Name, Trial.Number, Correct, timelimit))
+# data <- PVT
 
-PVT1 <- group_by(data, Test, Day, Condition, ID) %>%
+## CREATE DATAFRAME  with the MeanRT per ID, Day, Condition
+PVT <- group_by(data, Test, Day, Condition, ID) %>%
   summarise(
     count = n(),
     Mean = mean(RT, na.rm = TRUE)
   )
+PVT <- as.data.frame(PVT)
+head(PVT) 
 
-# make dataframe with 1 measure per condition, participant and day: remove duplicate - now only 1 datapoint per MeanRT
-PVT<- PVT[PVT$Trial.Number==1,]
-length(unique(PVT$Mean))#388 =97*4
 # visualise RT's: from 0 to 10 seconds 
 d<-melt(data.frame(RT=c(PVT$Mean))) # we melt to wide format
 distribution_plot (d, 'Mean')
 qqPlot(PVT$Mean) # clearly not a normal distribution: a big skew 
-
-# We look only at before-test (test=1) because we want to measure baseline vigilance
-PVT <- PVT[!(PVT$Test==2),] 
-#remove unnecessairy columns
-PVT = subset(PVT, select = -c(Local.Date, Participant.Private.ID, Task.Name, Trial.Number, Correct, timelimit))
-data <- PVT
-
-## CREATE DATAFRAME  with the MeanRT per ID, Day, Condition
-PVT <- group_by(PVT, Condition, Day, ID) %>%
-  summarise(
-    count = n(),
-    MeanRT = mean(Mean, na.rm = TRUE)
-  )
-PVT <- as.data.frame(PVT)
-head(PVT) 
+ 
 
 # make factors
 PVT$Day <- factor(PVT$Day)
@@ -154,7 +148,7 @@ emmean_dataframe <- summary(emmeans1)$emmeans
 Anova(two_w, type='III')
 summary(emmeans1)
 #summary 
-sum <- sum_2 (PVT, 'Day', 'Condition', 'MeanRT')
+sum <- sum_2 (PVT, 'Day', 'Condition', 'Mean')
 sum
 
 ## VISUALISATION
@@ -201,9 +195,6 @@ PVT$Condition <- factor(PVT$Condition)
 
 #Download VAS-f data
 data <- read.csv(paste0(Dir, "VAS.csv"), header = TRUE, sep = )#VAS has 'quantised: 1-11 instead of 0-10
-
-# remove unnecessary columns
-data = subset(data, select = -c(Local.Date, Participant.Private.ID, Task.Name))  
 data <-data[(grepl("quantised", data$Question.Key)),]
 
 # # take mean of the scale per participant, per day/test.
@@ -213,6 +204,7 @@ data <-data[(grepl("quantised", data$Question.Key)),]
 #   data$Mean[data$ID==i & data$Test==1 & data$Day==2]= mean (data$Response[data$ID==i & data$Test==1 & data$Day==2])
 #   data$Mean[data$ID==i & data$Test==2 & data$Day==2]= mean (data$Response[data$ID==i & data$Test==2 & data$Day==2])
 # }
+# data = subset(data, select = -c(Local.Date, Participant.Private.ID, Task.Name, Question.Key)) 
 # VAS<-data
 # #make dataframe with 1 measure per condition
 # VAS<- VAS[VAS$Question.Key=='0-quantised',]
@@ -226,11 +218,11 @@ data <-data[(grepl("quantised", data$Question.Key)),]
 
 
 
-VAS <- group_by(data, Test, Day, Condition, ID) %>%
+VAS <- as.data.frame(group_by(data, Test, Day, Condition, ID) %>%
   summarise(
     count = n(),
     Mean = mean(Response, na.rm = TRUE)
-  )
+  ))
 
 #summary data
 sum_2(VAS, 'Condition', 'Day', 'Mean' )
@@ -240,6 +232,7 @@ VAS$Day <- as.factor(VAS$Day)
 VAS$Condition <- as.factor(VAS$Condition)
 VAS$ID <- as.factor(VAS$ID)
 names(VAS)[names(VAS)=="Test"] <- "Time"
+# VAS$Time <- as.POSIXct(VAS$Time, format=  "%Y-%m-%d %H:%M", tz = "UTC")
 VAS$Time <- as.factor(VAS$Time)
 
 ### MEAN IPV DIFF ####
@@ -266,7 +259,7 @@ ggqqplot(VAS, "Diff", ggtheme = theme_bw()) +
   facet_grid( ~Condition) #  very obviously NOT a normal distribution
 
 # SPHERICITY: Mauchly's test
-x<-anova_test(data= VAS, dv= CV, wid= ID, between= Condition, within= c(Day))
+x<-anova_test(data= VAS, dv= Mean, wid= ID, between= Condition, within= c(Time, Day))
 get_anova_table(x, correction = c('GG')) #variances are NOT equal! 
 x$'Sphericity Corrections'
 
@@ -282,33 +275,42 @@ qqPlot(VAS$Mean) #
 # log transform data
 # PVT$RT = log(PVT$MeanRT)
 
-## ANALYSIS 
-# we use Poisson because the data is highly positively skewed
-two_w <- glmer( ~ Condition * Day + (1 | ID), family = poisson, data = VAS)
-emmeans1<- emmeans(two_w, pairwise ~ Condition * Day, adjust ="fdr", type = "response")
+#### repeated-measures ANOVA ####
+
+get_anova_table(x)
+
+#tukey's post-hoc analyses: see if performance decreased faster in HCL compared to LCL
+three_w <- lm(Mean ~ Time*Condition*Day, data= VAS)
+exp.av <- aov(three_w)
+summary(exp.av)
+tukey.test <- TukeyHSD(exp.av)
+tukey.test$Time #t1 > t4 & t5, t2 >t4 & t5!
+
+emmeans1<- emmeans(three_w, pairwise ~ Time*Condition*Day, adjust ="fdr", type = "response")
 emmean_dataframe <- summary(emmeans1)$emmeans
 
-Anova(two_w, type='III')
+Anova(three_w, type='III')
 summary(emmeans1)
 
 #summary 
-sum <- sum_2 (PVT, 'Day', 'Condition', 'CV')
+sum <- sum_3 (VAS, 'Time', 'Condition', 'Day', 'Mean')
 sum
 
 ## VISUALISATION
 # boxplot 
 bxp <- ggboxplot(
-  VAS, x = "Day", y = "Diff",
-  color = "Condition", palette = "jco")
-bxp 
-
+  VAS, x = "Condition", y = "Mean",
+  color = "Time", palette = "jco",
+  facet.by = "Day", short.panel.labs = FALSE
+  )
 ## plot with error bars
-max_y<-max(VAS$Diff)
-pl <- plotty(VAS, emmean_dataframe, 'Day',  'Diff', 'Condition', 'emmean', 'subj CF') 
+max_y<-max(VAS$Mean)
+pl <- plotty(VAS, emmean_dataframe, 'Time', 'Mean', 'Condition', 'emmean', 'subj CF') +
   #   geom_segment(aes(x =0.9, y = max_y+max_y/15, xend = 1.1, yend = max_y+max_y/15), size= 1)+ # top line
   # annotate('text', x=1, y=max_y+max_y/15+max_y/100, label='**', size=7)+ # tar
   #   geom_segment(aes(x =1.9, y = max_y+max_y/15, xend = 2.1, yend = max_y+max_y/15), size= 1) # top line
   # # annotate('text', x=2, y=max_y+max_y/15+max_y/100, label='*', size=7) # star
+ facet_grid(.~Day)
 ggsave(pl, file=paste0(plotPrefix, "VAS_Plot.jpeg"), width = 2500, height = 1500, dpi = 300, units = "px")
 pl
 
@@ -493,7 +495,8 @@ bxp <- ggboxplot(
 bxp
 
 ## plot with error bars
-pl <- plotty(EXP, emmean_dataframe, 'Time',  'Mean', 'Condition', 'prob', 'Performance/Objective CF') 
+pl <- plotty(EXP, emmean_dataframe, 'Time',  'Mean', 'Condition', 'prob', 'Performance/Objective CF') +
+  facet_grid(.~Day)
 pl
 
 ### CONDITION ###
