@@ -135,6 +135,7 @@ bxp <- ggboxplot(
 bxp
 
 ## plot with error bars
+max_y<-max(PVT$Mean)
 pl <- plotty(PVT, emmean_dataframe, 'Day',  'Mean', 'Condition', 'emmean', 'Vigilance') 
   #   geom_segment(aes(x =0.9, y = max_y+max_y/15, xend = 1.1, yend = max_y+max_y/15), size= 1)+ # top line
   # annotate('text', x=1, y=max_y+max_y/15+max_y/100, label='**', size=7)+ # tar
@@ -154,7 +155,7 @@ pl
 #### DOWNLOAD + CLEAN DATA ####
 data <- read.csv(paste0(Dir, "VAS.csv"), header = TRUE, sep = )
 data <-data[(grepl("quantised", data$Question.Key)),] #VAS has 'quantised: 1-11 instead of 0-10
-
+# create dataframe
 VAS <- as.data.frame(group_by(data, Test, Day, Condition, ID) %>%
   summarise(
     count = n(),
@@ -232,7 +233,6 @@ bxp <- ggboxplot(
   facet.by = "Day", short.panel.labs = FALSE
   )
 ## plot with error bars
-max_y<-max(VAS$Mean)
 pl <- plotty(VAS, emmean_dataframe, 'Time', 'Mean', 'Condition', 'emmean', 'subj CF') +
  facet_grid(.~Day)+
 scale_x_discrete(labels=c("Before", "After"))
@@ -243,50 +243,37 @@ pl
 -----------------------------------------------------------------------------------
 
 ```{r message=FALSE, warning = FALSE}
-
 ##########################################
   ### PERFORMANCE/ ACCURACY/ OBJECTIVE CF ###
 #########################################
-# We will test Performance (weighted accuracy) with Condition (HCL/LCL) and Time (t1-t3) as within-subject factors.
+# We will test  the evolution of Performance (weighted accuracy) during TloadDback with Condition (HCL/LCL) and Time (t1-t3) as within-subject factors.
 # interested in main effect e.g. t1>t4 and Condition x Time interaction on the Acc
 
-#### PREPARATION ####
-
-## DOWNLOAD + CLEAN DATA
+#### DOWNLOAD + CLEAN DATA ####
 data<- read.csv(paste0(Dir, "EXP.csv"), header = TRUE, sep = )
 # we remove rows that have prop_correct == NA , because these are lines in the data where the ERROR message was shown (accuracy=0)
 data <- data[!is.na(data$prop_correct),]
 # create a trial.index that goes from 1 to the number of trials:  not every participant has equal amount of trials, depends on their speed/accuracy
-for (i in 1:97) {
-  data$trial.index[data$ID==i]= 1:length(unique(data$Trial.Index[data$ID ==i]))
-}
-length(data$trial.index[is.na(data$trial.index)]) # check number of NA's, should be 0
-#remove some unnecessary columns
-data = subset(data, select = -c(Local.Date, Participant.Private.ID, Task.Name, Accuracy_Level, Time.Elapsed, Trial.Index))
+for (i in 1:97) { data$trial.index[data$ID==i]= 1:length(unique(data$Trial.Index[data$ID ==i]))}
+# length(data$trial.index[is.na(data$trial.index)]) 
+# data = subset(data, select = -c(Local.Date, Participant.Private.ID, Task.Name, Accuracy_Level, Time.Elapsed, Trial.Index))
 
-## WEIGHTED ACCURACY
-# = the evolution of performance during TloadDback
 # create var Time that indicates if it is part of t1, t2, t3. t1 is the first 40%, t2 middle 20%, t3 last 40% 
-# we need to work with percents because the #trials differs per ptt AND per day: 
+# we work with percentages because the #trials differs per ptt AND per day: 
 for (i in 1:97) {
   data$Time[data$ID ==i & data$Day==1] = "t3" # day 1
   data$Time[data$ID ==i & data$Day==1 & data$trial.index<(0.6* length(data$trial.index[data$Day==1 & data$ID==i])) ] = "t2"
   data$Time[data$ID ==i & data$Day==1 & data$trial.index<(0.4* length(data$trial.index[data$Day==1 & data$ID==i])) ] = "t1"
-   
   data$Time[data$ID ==i & data$Day==2] = "t3" # day 2
   data$Time[data$ID ==i & data$Day==2 & data$trial.index<(0.6* length(data$trial.index[data$Day==2 & data$ID==i])) ] = "t2"
   data$Time[data$ID ==i & data$Day==2 & data$trial.index<(0.4* length(data$trial.index[data$Day==2 & data$ID==i])) ] = "t1"
 }
-length(data$Time[is.na(data$Time)]) #NAs, should be 0
-
-
-## CREATE DATAFRAME  with the Acc prop_correct per ID, Time, Day, Condition
-EXP <- group_by(data, Condition, Day, Time, ID) %>%
+# CREATE DATAFRAME, with the Mean prop_correct per ID, Time, Day, Condition
+EXP <- as.data.frame (group_by(data, Condition, Day, Time, ID) %>%
   summarise(
     count = n(),
     Mean = mean(prop_correct, na.rm = TRUE)
-  )
-EXP <- as.data.frame(EXP)
+  ))
 head(EXP) # mean Mean (prop_correct) per ID, Time, Day and Condition
 
 # set factors
@@ -294,7 +281,6 @@ EXP$Time <- as.factor(EXP$Time)
 EXP$Condition <- as.factor(EXP$Condition)
 EXP$Day <- as.factor(EXP$Day)
 EXP$ID <- as.factor(EXP$ID)
-
 
 
 ### CHECKING ASSUMPTIONS ####
@@ -334,12 +320,9 @@ EXP %>%
   identify_outliers(Mean)
  outliers <- boxplot(EXP$prop_correct, plot=FALSE)$out
 summary(EXP$Mean)
-outliers <- boxplot(EXP$Mean, plot=FALSE)$out
-
-#remove outliers? Maybe not necessary
-#remove under 3? (sign not paying attention? a bit arbitrary)
+#remove under e.g. 3? (sign not paying attention? a bit arbitrary)
 #EXP <-  EXP[!EXP$Mean<0.3,]
-#remove outliers outside of quantiles
+#remove outliers per condition (HCL/LCL) because they have different distributions! 
 list_quantiles <- tapply(EXP$Mean, EXP$Condition, quantile)
 Q1s <- sapply(1:2, function(i) list_quantiles[[i]][2])
 Q3s <- sapply(1:2, function(i) list_quantiles[[i]][4])
@@ -349,25 +332,16 @@ Uppers <- Q3s + 1.5*IQRs
 datas <- split(EXP, EXP$Condition)
 data_no_outlier <- NULL
 for (i in 1:2){
-out <- subset(datas[[i]], datas[[i]]$Mean > Lowers[i] & datas[[i]]$Mean < Uppers[i])
-data_no_outlier <- rbind(data_no_outlier, out)
-}
+  out <- subset(datas[[i]], datas[[i]]$Mean > Lowers[i] & datas[[i]]$Mean < Uppers[i])
+  data_no_outlier <- rbind(data_no_outlier, out)}
 EXP<- as.data.frame(data_no_outlier)
-
-# Also: unbalanced design! not equal amount in each group
-length(unique(EXP$ID[EXP$Condition=='LCL']))
-length(unique(EXP$ID[EXP$Condition=='HCL']))
-
-## SOLUTION: 
 #even after log transform and removing outliers we have clearly not a normal distribution 
 # so we need to use GLM. https://stats.stackexchange.com/questions/189115/fitting-a-binomial-glmm-glmer-to-a-response-variable-that-is-a-proportion-or-f
-#BINOMIAL because the Meanuracy is between 0 and 1
-# it is a (continuous) proportion: we need to use the 'weights' argument for the number of trials that lead to the proportion
-
 
 ### CONDITION * TIME ###
-
-## STATISTICAL TEST
+# HCLvs LCL over time
+#BINOMIAL because the Mean accuracy is between 0 and 1
+# it is a (continuous) proportion: we need to use the 'weights' argument for the number of trials that lead to the proportion
 two_w <- glmer(Mean ~ Condition * Time + (1 | ID), weights = count,
    family = binomial, data = EXP)
 emmeans1<- emmeans(two_w, pairwise ~ Condition * Time, adjust ="fdr", type = "response")
@@ -387,12 +361,18 @@ bxp <- ggboxplot(
 bxp
 
 ## plot with error bars
+max_y<-max(EXP$Mean)
 pl <- plotty(EXP, emmean_dataframe, 'Time',  'Mean', 'Condition', 'prob', 'Performance/Objective CF') +
   facet_grid(.~Day)
+  #   geom_segment(aes(x =0.9, y = max_y+max_y/15, xend = 1.1, yend = max_y+max_y/15), size= 1)+ # top line
+  # annotate('text', x=1, y=max_y+max_y/15+max_y/100, label='**', size=7)+ # tar
+  #   geom_segment(aes(x =1.9, y = max_y+max_y/15, xend = 2.1, yend = max_y+max_y/15), size= 1) # top line
+  # # annotate('text', x=2, y=max_y+max_y/15+max_y/100, label='*', size=7) # star
+ggsave(pl, file=paste0(plotPrefix, "Acc_Cond*Time_Plot.jpg"), width = 2500, height = 1500, dpi = 300, units = "px")
 pl
 
+
 ### CONDITION ###
-## STATISTICAL TEST
 one_w <- glmer(Mean ~ Condition  + (1 | ID), weights = count,
    family = binomial, data = EXP)
 emmeans1<- emmeans(one_w, pairwise ~ Condition, adjust ="fdr", type = "response")
@@ -409,12 +389,11 @@ bxp
 
 #  plot
 pl <- one_w_plot(EXP, emmean_dataframe, 'Condition', 'Mean', 'prob', 'Performance/Objective CF')
+ggsave(pl, file=paste0(plotPrefix, "Acc_Cond_Plot.jpg"), width = 2500, height = 1500, dpi = 300, units = "px")
 pl
 
 
 ####  DAY 1 vs DAY 2 #####
-
-## STATISTICAL TEST
 two_w <- glmer(Mean ~ Condition * Day + (1 | ID), weights = count,
    family = binomial, data = EXP)
 emmeans1<- emmeans(two_w, pairwise ~ Condition * Day, adjust ="fdr", type = "response")
@@ -428,25 +407,20 @@ sum
 
 ## VISUALISATION
 # plot with error bars
-plot <- plotty(EXP, emmean_dataframe, 'Day',  'Mean', 'Condition', 'prob', 'Perfromance/Objective CF') 
-plot
+pl <- plotty(EXP, emmean_dataframe, 'Day',  'Mean', 'Condition', 'prob', 'Perfromance/Objective CF') 
+ggsave(pl, file=paste0(plotPrefix, "Acc_Cond*Day_Plot.jpg"), width = 2500, height = 1500, dpi = 300, units = "px")
+pl
 
 
 ### COMPONENTS (Color/Pic)####
+
 # evolution over time for 2 components of the task
 # Pics: decide if big/small. Color: decide if same as DualBack: more Working Memory
-# Stim * Condition * Time as within-subj factors
-# interaction and main effect
-# to indicate higher complexity WMM component (pics) compared to balls 
-
-EXP <- group_by(data, Condition, Day, Time, ID, Stim) %>%
+EXP <- as.data.frame (group_by(data, Condition, Day, Time, ID, Stim) %>%
   summarise(
     count = n(),
     Mean = mean(prop_correct, na.rm = TRUE)
-  )
-EXP <- as.data.frame(EXP)
-head(EXP) # mean Mean (prop_correct) per ID, Time, Day and Condition
-
+  ))
 # set factors
 EXP$Time <- as.factor(EXP$Time)
 EXP$Condition <- as.factor(EXP$Condition)
@@ -455,9 +429,9 @@ EXP$ID <- as.factor(EXP$ID)
 EXP$Stim <- as.factor(EXP$Stim)
 
 ## STATISTICAL TEST
-two_w <- glmer(Mean ~ Condition * Time * Stim + (1 | ID), weights = count,
+three_w <- glmer(Mean ~ Condition * Time * Stim + (1 | ID), weights = count,
    family = binomial, data = EXP)
-emmeans1<- emmeans(two_w, pairwise ~ Condition * Time * Stim, adjust ="fdr", type = "response")
+emmeans1<- emmeans(three_w, pairwise ~ Condition * Time * Stim, adjust ="fdr", type = "response")
 emmean_dataframe <- summary(emmeans1)$emmeans
 
 Anova(two_w, type='III')
@@ -466,12 +440,17 @@ summary(emmeans1)
 sum <- sum_2 (EXP, 'Stim', 'Condition', 'Mean')
 sum
 
-
 ## VISUALISATION
-# not really intuitive because 3-way interaction
-
-## CORR Mean score between two conditions (HCL and LCL)
-
+## plot with error bars
+max_y<-max(EXP$Mean)
+pl <- plotty(EXP, emmean_dataframe, 'Stim', 'Mean', 'Condition', 'prob', 'Accuracy') +
+ facet_grid(.~Time)
+  #   geom_segment(aes(x =0.9, y = max_y+max_y/15, xend = 1.1, yend = max_y+max_y/15), size= 1)+ # top line
+  # annotate('text', x=1, y=max_y+max_y/15+max_y/100, label='**', size=7)+ # tar
+  #   geom_segment(aes(x =1.9, y = max_y+max_y/15, xend = 2.1, yend = max_y+max_y/15), size= 1) # top line
+  # # annotate('text', x=2, y=max_y+max_y/15+max_y/100, label='*', size=7) # star
+ggsave(pl, file=paste0(plotPrefix, "EXP_Components_Plot.jpg"), width = 2500, height = 1500, dpi = 300, units = "px")
+pl
 ```
 
 

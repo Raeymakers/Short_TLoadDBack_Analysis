@@ -172,12 +172,10 @@ plotty <- function(data, Dataframe, xvar, yvar, fillvar, Mean, title){
     geom_point(data= Dataframe, aes(x =.data[[xvar]], y = .data[[Mean]], fill=.data[[fillvar]]), position= position_dodge(0.1), size=4)+
     geom_errorbar( data= Dataframe, aes(x=.data[[xvar]], ymin=.data[[Mean]]-SE, ymax=.data[[Mean]]+SE, fill=.data[[fillvar]]),position= position_dodge(0.3), width=0.1, colour="black", alpha=0.9, size=0.07) + #SD error bar
     geom_errorbar(data= Dataframe, aes(x=.data[[xvar]], ymin=.data[[Mean]]-ic, ymax=.data[[Mean]]+ic, fill=.data[[fillvar]]), position= position_dodge(0.4), width=0.1, colour="red", alpha=0.9, size=0.07)+ #C.I.
-    # scale_fill_manual(values = c("blue", 'red'), #colours used in plot
-    #                   name='', #legend gets no name
-    #                   labels=c(paste0('noPMS \n n=', as.character(sum(data$PMS == "noPMS")/2)), paste0('PMS \n n=', as.character(sum(data$PMS == "PMS")/2)), paste0('PMDD \n n=',as.character(sum(data$PMS == "PMDD")/2))))+ #labels names with amount
+    scale_fill_manual(values = c("blue", 'red'), #colours used in plot
+                      name='', #legend gets no name
+                      labels=c(paste0('HCL \n n=', as.character(sum(data$Condition == "HCL")/2)), paste0('LCL \n n=', as.character(sum(data$Condition == "LCL")/2)) ))+ #labels names with amount
     ggtitle(title)+
-    # facet_grid(Day)+
-    # scale_x_discrete(labels=c("Follicular", "Luteal"))+
     theme(
       legend.key.size=unit(1.3, 'cm'), # make keys of legend bigger
       legend.text=element_text(size=13), # text legend bigger
@@ -188,7 +186,7 @@ plotty <- function(data, Dataframe, xvar, yvar, fillvar, Mean, title){
       panel.grid.major.y = element_line( size=.1, color="#dedede" ), #slight grey horizontal lines
       axis.text.x=element_text(size=rel(2)), #size x axis title
       axis.text.y=element_text(size=rel(1.3)),
-      axis.title.y=element_text(size=rel(1.5)), #size y axis title
+      axis.title.y=element_text(size=rel(1.5)), #size y axis titl
       axis.title.x = element_blank()) # leave away extra x title (only 'foll' and 'lut')
 }
 
