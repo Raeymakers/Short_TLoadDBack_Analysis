@@ -169,6 +169,10 @@ VAS$ID <- as.factor(VAS$ID)
 names(VAS)[names(VAS)=="Test"] <- "Time"
 VAS$Time <- as.factor(VAS$Time)
 
+length(unique(VAS$ID[VAS$Condition=='HCL']))
+length(unique(VAS$ID[VAS$Condition=='LCL']))# unb µalanced
+VAS <- VAS[!(VAS$ID==49),] #remove ID 49
+
 
 ### CHECKING ASSUMPTIONS ####
 # Time x Condition 2-way ANOVA with interaction effect (what Borrogan did)
@@ -255,19 +259,22 @@ data<- read.csv(paste0(Dir, "EXP.csv"), header = TRUE, sep = )
 data <- data[!is.na(data$prop_correct),]
 # create a trial.index that goes from 1 to the number of trials:  not every participant has equal amount of trials, depends on their speed/accuracy
 for (i in 1:97) { data$trial.index[data$ID==i]= 1:length(unique(data$Trial.Index[data$ID ==i]))}
+
 # length(data$trial.index[is.na(data$trial.index)]) 
 # data = subset(data, select = -c(Local.Date, Participant.Private.ID, Task.Name, Accuracy_Level, Time.Elapsed, Trial.Index))
 
 # create var Time that indicates if it is part of t1, t2, t3. t1 is the first 40%, t2 middle 20%, t3 last 40% 
 # we work with percentages because the #trials differs per ptt AND per day: 
 for (i in 1:97) {
-  data$Time[data$ID ==i & data$Day==1] = "t3" # day 1
-  data$Time[data$ID ==i & data$Day==1 & data$trial.index<(0.6* length(data$trial.index[data$Day==1 & data$ID==i])) ] = "t2"
-  data$Time[data$ID ==i & data$Day==1 & data$trial.index<(0.4* length(data$trial.index[data$Day==1 & data$ID==i])) ] = "t1"
-  data$Time[data$ID ==i & data$Day==2] = "t3" # day 2
-  data$Time[data$ID ==i & data$Day==2 & data$trial.index<(0.6* length(data$trial.index[data$Day==2 & data$ID==i])) ] = "t2"
-  data$Time[data$ID ==i & data$Day==2 & data$trial.index<(0.4* length(data$trial.index[data$Day==2 & data$ID==i])) ] = "t1"
+  data$Time[data$ID ==i & data$Day==1] = 2 # day 1
+  data$Time[data$ID ==i & data$Day==1 & data$trial.index<(0.6* length(data$trial.index[data$Day==1 & data$ID==i])) ] = "middle"
+  data$Time[data$ID ==i & data$Day==1 & data$trial.index<(0.4* length(data$trial.index[data$Day==1 & data$ID==i])) ] = 1
+  data$Time[data$ID ==i & data$Day==2] = 2 # day 2
+  data$Time[data$ID ==i & data$Day==2 & data$trial.index<(0.6* length(data$trial.index[data$Day==2 & data$ID==i])) ] = "middle"
+  data$Time[data$ID ==i & data$Day==2 & data$trial.index<(0.4* length(data$trial.index[data$Day==2 & data$ID==i])) ] = 1
 }
+#remove 'middle'
+data <- data[!(data$Time=="middle"),]
 # CREATE DATAFRAME, with the Mean prop_correct per ID, Time, Day, Condition
 EXP <- as.data.frame (group_by(data, Condition, Day, Time, ID) %>%
   summarise(
@@ -282,6 +289,9 @@ EXP$Condition <- as.factor(EXP$Condition)
 EXP$Day <- as.factor(EXP$Day)
 EXP$ID <- as.factor(EXP$ID)
 
+length(unique(EXP$ID[EXP$Condition=='HCL']))
+length(unique(EXP$ID[EXP$Condition=='LCL']))# unb µalanced
+EXP <- EXP[!(EXP$ID==49),] #remove ID 49
 
 ### CHECKING ASSUMPTIONS ####
 
@@ -416,34 +426,34 @@ pl
 
 # evolution over time for 2 components of the task
 # Pics: decide if big/small. Color: decide if same as DualBack: more Working Memory
-EXP <- as.data.frame (group_by(data, Condition, Day, Time, ID, Stim) %>%
+EXP1 <- as.data.frame (group_by(data, Condition, Day, Time, ID, Stim) %>%
   summarise(
     count = n(),
     Mean = mean(prop_correct, na.rm = TRUE)
   ))
 # set factors
-EXP$Time <- as.factor(EXP$Time)
-EXP$Condition <- as.factor(EXP$Condition)
-EXP$Day <- as.factor(EXP$Day)
-EXP$ID <- as.factor(EXP$ID)
-EXP$Stim <- as.factor(EXP$Stim)
+EXP1$Time <- as.factor(EXP1$Time)
+EXP1$Condition <- as.factor(EXP1$Condition)
+EXP1$Day <- as.factor(EXP1$Day)
+EXP1$ID <- as.factor(EXP1$ID)
+EXP1$Stim <- as.factor(EXP1$Stim)
 
 ## STATISTICAL TEST
 three_w <- glmer(Mean ~ Condition * Time * Stim + (1 | ID), weights = count,
-   family = binomial, data = EXP)
+   family = binomial, data = EXP1)
 emmeans1<- emmeans(three_w, pairwise ~ Condition * Time * Stim, adjust ="fdr", type = "response")
 emmean_dataframe <- summary(emmeans1)$emmeans
 
 Anova(two_w, type='III')
 summary(emmeans1)
 # summary
-sum <- sum_2 (EXP, 'Stim', 'Condition', 'Mean')
+sum <- sum_2 (EXP1, 'Stim', 'Condition', 'Mean')
 sum
 
 ## VISUALISATION
 ## plot with error bars
-max_y<-max(EXP$Mean)
-pl <- plotty(EXP, emmean_dataframe, 'Stim', 'Mean', 'Condition', 'prob', 'Accuracy') +
+max_y<-max(EXP1$Mean)
+pl <- plotty(EXP1, emmean_dataframe, 'Stim', 'Mean', 'Condition', 'prob', 'Accuracy') +
  facet_grid(.~Time)
   #   geom_segment(aes(x =0.9, y = max_y+max_y/15, xend = 1.1, yend = max_y+max_y/15), size= 1)+ # top line
   # annotate('text', x=1, y=max_y+max_y/15+max_y/100, label='**', size=7)+ # tar
@@ -459,64 +469,74 @@ pl
 ```{r message=FALSE, warning = FALSE}
 ##########################################
   ### CORRELATIONS ###
-#########################################
+#########################################C
 
-### Correlation plot ####
-
-
-### CORR VAS-f difference score between two conditions (HCL and LCL)
-
-
-## CORR Mean score between two conditions (HCL and LCL)
+# Create 1 big dataframe
+names(VAS)[names(VAS)=="Mean"] <- "VASf"
+names(EXP)[names(EXP)=="Mean"] <- "Acc"
+df <- merge(VAS, EXP, by = c('Day','Time', 'Condition', 'ID'))
 
 
-## Pearson coeff  between delta (change) of VASf and delta (change) of Mean during first/second half 
+### VAS-f ###
 
-## Test-restest corr betweeen VAS f Day 1 and Day 2 in HCL and LCL
+## CORR VAS-f Mean score between Day 1 and Day 2 (test-retest reliability)
+# HCL 
+Day1 <- VAS$VASf[VAS$Day==1 & VAS$Condition=='HCL']
+Day2 <- VAS$VASf[VAS$Day==2 & VAS$Condition=='HCL']
+corrplot(Day1, Day2)
+#LCL
+Day1 <- VAS$VASf[VAS$Day==1 & VAS$Condition=='LCL']
+Day2 <- VAS$VASf[VAS$Day==2 & VAS$Condition=='LCL']
+corrplot(Day1, Day2)
+# cor.test(VAS$VASf[VAS$Condition=='HCL'], VAS$VASf[VAS$Condition=='LCL'],  method="spearman")# not Pearson because: not normal distribution
+# cor.test(VAS$Mean[VAS$Condition=='HCL'], VAS$Mean[VAS$Condition=='LCL'],  method="kendall")
 
-# Test-restest corr Mean day 1 and day 2 in HCL and LCL
+## CORR VAS-f delta between Day 1 and Day 2 
+#HCL
+Day1 <- VAS$VASf[VAS$Day==1 & VAS$Condition=='HCL' & VAS$Time==2]- VAS$VASf[VAS$Day==1 & VAS$Condition=='HCL' & VAS$Time==1]
+Day2 <- VAS$VASf[VAS$Day==2 & VAS$Condition=='HCL' & VAS$Time==2]- VAS$VASf[VAS$Day==2 & VAS$Condition=='HCL' & VAS$Time==1]
+corrplot(Day1, Day2)
+#LCL
+Day1 <- VAS$VASf[VAS$Day==1 & VAS$Condition=='LCL' & VAS$Time==2]- VAS$VASf[VAS$Day==1 & VAS$Condition=='LCL' & VAS$Time==1]
+Day2 <- VAS$VASf[VAS$Day==2 & VAS$Condition=='LCL' & VAS$Time==2]- VAS$VASf[VAS$Day==2 & VAS$Condition=='LCL' & VAS$Time==1]
+corrplot(Day1, Day2)
 
-## correlation VASf with PVT
+### Accuracy ###
 
-## corr VASf with Mean
+## CORR Accuracy Day 1 and Day 2  (test-retest reliability)
+#HCL
+Day1 <- EXP$Acc[EXP$Day==1 & EXP$Condition=='HCL' & EXP$Time==2]- EXP$Acc[EXP$Day==1 & EXP$Condition=='HCL' & EXP$Time==1]
+Day2 <- EXP$Acc[EXP$Day==2 & EXP$Condition=='HCL' & EXP$Time==2]- EXP$Acc[EXP$Day==2 & EXP$Condition=='HCL' & EXP$Time==1]
+corrplot(Day1, Day2)
+#LCL
+Day1 <- EXP$Acc[EXP$Day==1 & EXP$Condition=='LCL' & EXP$Time==2]- EXP$Acc[EXP$Day==1 & EXP$Condition=='LCL' & EXP$Time==1]
+Day2 <- EXP$Acc[EXP$Day==2 & EXP$Condition=='LCL' & EXP$Time==2]- EXP$Acc[EXP$Day==2 & EXP$Condition=='LCL' & EXP$Time==1]
+corrplot(Day1, Day2)
 
-## Corr PVT with Mean
-
-cor.test(my_data$wt, my_data$mpg,  method="kendall") # not Pearson because: not normal distribution
-cor.test(my_data$wt, my_data$mpg,  method = "spearman") # or Spearman
-
-### Correlation plot ####
-overall_corr <- function(var1, var2, x_lab, y_lab) {
-  dataframe <- data.frame(var1, var2)
-  ggscatter(dataframe, x = var1, y = var2,
-            add='reg.line', fullrange=TRUE,
-            conf.int=TRUE,
-            cor.coef=TRUE, cor.method='pearson',
-            xlab=x_lab, ylab=y_lab)+
-    geom_segment(aes(x = -4, y = -4, xend = 40, yend = 40), size= 1, colour='red')
-}
-
-var1<- VAS$Diff[VAS$Condition=='HCL']
-var2<- VAS$Diff[VAS$Condition=='LCL']
-x_lab= 'VAS-f HCL'
-y_lab= 'VAS-f LCL'
-dataframe <- data.frame(var1, var2)
-  ggscatter(dataframe, x = var1, y = var2,
-            add='reg.line', fullrange=TRUE,
-            conf.int=TRUE,
-            cor.coef=TRUE, cor.method='pearson',
-            xlab=x_lab, ylab=y_lab)+
-    geom_segment(aes(x = -4, y = -4, xend = 40, yend = 40), size= 1, colour='red')
+## CORR Accuracy delta between Day 1 and Day 2 
+#HCL
+Day1 <- EXP$Acc[EXP$Day==1 & EXP$Condition=='HCL' & EXP$Time==2]- EXP$Acc[EXP$Day==1 & EXP$Condition=='HCL' & EXP$Time==1]
+Day2 <- EXP$Acc[EXP$Day==2 & EXP$Condition=='HCL' & EXP$Time==2]- EXP$Acc[EXP$Day==2 & EXP$Condition=='HCL' & EXP$Time==1]
+corrplot(Day1, Day2) # negative correlation: when high in day 1, low in day 2
+#LCL
+Day1 <- EXP$Acc[EXP$Day==1 & EXP$Condition=='LCL' & EXP$Time==2]- EXP$Acc[EXP$Day==1 & EXP$Condition=='LCL' & EXP$Time==1]
+Day2 <- EXP$Acc[EXP$Day==2 & EXP$Condition=='LCL' & EXP$Time==2]- EXP$Acc[EXP$Day==2 & EXP$Condition=='LCL' & EXP$Time==1]
+corrplot(Day1, Day2) # positive correlation: when high in day 1, high in day 2
 
 
-overall_corr(PSS, PTQ, x_lab, y_lab)
 
-## delta
-# PMS
-PSS <- data$PSS[data$PMS=='PMS'&data$Moment=='Foll']-data$PSS[data$PMS=='PMS'&data$Moment=='Lut']
-PTQ <- data$PTQ[data$PMS=='PMS'&data$Moment=='Foll']-data$PTQ[data$PMS=='PMS'&data$Moment=='Lut']
-x_lab = 'PMS_delta_PSS'
-y_lab = 'PMS_delta_PTQ'
-overall_corr(PSS, PTQ, x_lab, y_lab)
+### VAS-f * Acc ###
+## CORR delta (change) VAS-f and delta Acc
+#HCL
+VAS_f <- df$VASf[df$Time==2 & df$Condition=='HCL'] - df$VASf[df$Time==1 & df$Condition=='HCL']
+ACC<- df$Acc[df$Time==2 & df$Condition=='HCL'] - df$Acc[df$Time==1 & df$Condition=='HCL']
+corrplot(VAS_f, ACC) # no correlation: change before-after test in VASf no correlation with obj CF changes 
+#LCL
+VAS_f <- df$VASf[df$Time==2 & df$Condition=='LCL'] - df$VASf[df$Time==1 & df$Condition=='LCL']
+ACC<- df$Acc[df$Time==2 & df$Condition=='LCL'] - df$Acc[df$Time==1 & df$Condition=='LCL']
+corrplot(VAS_f, ACC)
+
+
+```
 
 

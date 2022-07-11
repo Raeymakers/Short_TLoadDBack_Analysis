@@ -174,7 +174,10 @@ plotty <- function(data, Dataframe, xvar, yvar, fillvar, Mean, title){
     geom_errorbar(data= Dataframe, aes(x=.data[[xvar]], ymin=.data[[Mean]]-ic, ymax=.data[[Mean]]+ic, fill=.data[[fillvar]]), position= position_dodge(0.4), width=0.1, colour="red", alpha=0.9, size=0.07)+ #C.I.
     scale_fill_manual(values = c("blue", 'red'), #colours used in plot
                       name='', #legend gets no name
-                      labels=c(paste0('HCL \n n=', as.character(sum(data$Condition == "HCL")/2)), paste0('LCL \n n=', as.character(sum(data$Condition == "LCL")/2)) ))+ #labels names with amount
+                      labels=c(
+                        paste0('HCL \n n=', as.character(length(unique(data$ID[data$Condition=='HCL'])))), 
+                        paste0('LCL \n n=', as.character(length(unique(data$ID[data$Condition=='LCL'])))) 
+                      ))+ #labels names with amount
     ggtitle(title)+
     theme(
       legend.key.size=unit(1.3, 'cm'), # make keys of legend bigger
@@ -241,13 +244,10 @@ distribution_plot <- function (data, var_name){
 
 
 ### Correlation plot ####
-overall_corr <- function(PSS, PTQ, x_lab, y_lab) {
-  dataframe <- data.frame(PSS, PTQ)
-  ggscatter(dataframe, x = "PSS", y = "PTQ",
+
+corrplot <- function (xvar, yvar){
+  dataframe <- data.frame(xvar, yvar)
+  ggscatter(dataframe, x = 'xvar', y= 'yvar',
             add='reg.line', fullrange=TRUE,
             conf.int=TRUE,
-            cor.coef=TRUE, cor.method='pearson',
-            xlab=x_lab, ylab=y_lab)+
-    geom_segment(aes(x = -4, y = -4, xend = 40, yend = 40), size= 1, colour='red')
-}
-
+            cor.coef=TRUE, cor.method='pearson')}
