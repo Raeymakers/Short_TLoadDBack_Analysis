@@ -44,14 +44,14 @@ setwd(Dir)
 # save figures
 if (!dir.exists("figures")){ # Create folder for storing the figures if it doesn't exist yet
   dir.create("figures")}
-plotPrefix <- paste0(dirname(rstudioapi::getSourceEditorContext()$path),"/figures/") # Prefix to easily store figures later
+plotPrefix <- paste0(Dir,"figures/") # Prefix to easily store figures later
 ```
 
 ```{r message=FALSE, warning = FALSE}
 ##########################################
   ### PVT/VIGILANCE/RT ###
 #########################################
-
+# we want to see if PVT/vigilance is different in day 1 compared to day 2 and in HCl compared to LCl (Condition) before the test
 
 #### DOWNLOAD + CLEAN DATA ####
 
@@ -136,6 +136,11 @@ bxp
 
 ## plot with error bars
 pl <- plotty(PVT, emmean_dataframe, 'Day',  'Mean', 'Condition', 'emmean', 'Vigilance') 
+  #   geom_segment(aes(x =0.9, y = max_y+max_y/15, xend = 1.1, yend = max_y+max_y/15), size= 1)+ # top line
+  # annotate('text', x=1, y=max_y+max_y/15+max_y/100, label='**', size=7)+ # tar
+  #   geom_segment(aes(x =1.9, y = max_y+max_y/15, xend = 2.1, yend = max_y+max_y/15), size= 1) # top line
+  # # annotate('text', x=2, y=max_y+max_y/15+max_y/100, label='*', size=7) # star
+ggsave(pl, file=paste0(plotPrefix, "PVT_Plot.jpeg"), width = 2500, height = 1500, dpi = 300, units = "px")
 pl
 ```
 --------------------------------------------------------------
@@ -154,7 +159,7 @@ VAS <- as.data.frame(group_by(data, Test, Day, Condition, ID) %>%
   summarise(
     count = n(),
     Mean = mean(Response, na.rm = TRUE)
-  ))
+  )) # we do Mean instead of Difference 2-1/1. Reason: this led to non-normal data
 
 #factors
 VAS$Day <- as.factor(VAS$Day)
@@ -163,7 +168,6 @@ VAS$ID <- as.factor(VAS$ID)
 names(VAS)[names(VAS)=="Test"] <- "Time"
 VAS$Time <- as.factor(VAS$Time)
 
-### MEAN IPV DIFF ####
 
 ### CHECKING ASSUMPTIONS ####
 # Time x Condition 2-way ANOVA with interaction effect (what Borrogan did)
@@ -175,15 +179,15 @@ plot(res.aov2, 1) # residuqls vs fits plot shows no evident relationship residua
 
 # NORMALITY
 aov_residuals <- residuals (object=res.aov2)
-shapiro.test(x=aov_residuals) # no normality! 
+shapiro.test(x=aov_residuals) #  
 VAS %>%
   group_by(Condition, Day) %>%
-  shapiro_test(Mean) # no normal distribution!
+  shapiro_test(Mean) # 
 #visualisation
-plot(res.aov2, 2) #clearly not normal
-ggqqplot(VAS, "Diff", ggtheme = theme_bw()) +
+plot(res.aov2, 2) #normal
+ggqqplot(VAS, "Mean", ggtheme = theme_bw()) +
   facet_grid(Day ~ Condition)
-ggqqplot(VAS, "Diff", ggtheme = theme_bw()) +
+ggqqplot(VAS, "Mean", ggtheme = theme_bw()) +
   facet_grid( ~Condition) #  very obviously NOT a normal distribution
 
 # SPHERICITY: Mauchly's test
@@ -194,20 +198,13 @@ x$'Sphericity Corrections'
 # OUTLIERS
 summary(VAS$Mean)
 outliers <- boxplot(VAS$Mean, plot=FALSE)$out
-# remove ? 
-# VAS<- VAS[-which(VAS$Diff %in% outliers),]
 #visualise
 d<-melt(data.frame(VAS=c(VAS$Mean))) # we melt to wide format
 distribution_plot (d, 'Mean')
-qqPlot(VAS$Mean) # 
-# log transform data
-# PVT$RT = log(PVT$MeanRT)
+qqPlot(VAS$Mean) 
+
 
 #### repeated-measures ANOVA ####
-
-#summary data
-sum_2(VAS, 'Condition', 'Day', 'Mean' )
-
 get_anova_table(x)
 
 #tukey's post-hoc analyses: see if performance decreased faster in HCL compared to LCL
@@ -237,45 +234,10 @@ bxp <- ggboxplot(
 ## plot with error bars
 max_y<-max(VAS$Mean)
 pl <- plotty(VAS, emmean_dataframe, 'Time', 'Mean', 'Condition', 'emmean', 'subj CF') +
-  #   geom_segment(aes(x =0.9, y = max_y+max_y/15, xend = 1.1, yend = max_y+max_y/15), size= 1)+ # top line
-  # annotate('text', x=1, y=max_y+max_y/15+max_y/100, label='**', size=7)+ # tar
-  #   geom_segment(aes(x =1.9, y = max_y+max_y/15, xend = 2.1, yend = max_y+max_y/15), size= 1) # top line
-  # # annotate('text', x=2, y=max_y+max_y/15+max_y/100, label='*', size=7) # star
- facet_grid(.~Day)
-ggsave(pl, file=paste0(plotPrefix, "VAS_Plot.jpeg"), width = 2500, height = 1500, dpi = 300, units = "px")
+ facet_grid(.~Day)+
+scale_x_discrete(labels=c("Before", "After"))
+ggsave(pl, file=paste0(plotPrefix, "VAS_Plot.jpg"), width = 2500, height = 1500, dpi = 300, units = "px")
 pl
-
-### just Condition ###
-
-one_w <- lm(Diff~Condition , data=VAS)
-emmeans1<- emmeans(one_w, pairwise ~ Condition, adjust ="fdr", type = "response")
-emmeans1<-data.frame(emmeans1)
-emmeans1<-emmeans1[-c(3),]
-#summary 
-sum <- sum_1 (VAS, 'Condition', 'Diff')
-sum
-
-## plot 
-### using standard error
-ggplot(sum) + 
-  geom_bar( aes(x=Condition, y=mean), stat="identity", fill=c("black", "lightgrey"), alpha=0.5) + 
-  geom_errorbar( aes(x=Condition, ymin=mean-se, ymax=mean+se), width=0.4, colour="white", alpha=0.9, size=1.5) +
-  ggtitle("Experiment 1: Overall difference VAS-f - using standard error")
-### using confidence interval
-ggplot(sum) +
-  geom_bar( aes(x=Condition, y=mean), stat="identity", fill=c("black", "lightgrey"), alpha=0.5) +
-  geom_errorbar( aes(x=Condition, ymin=mean-ic, ymax=mean+ic), width=0.4, colour="white", alpha=0.9, size=1.5) +
-  ggtitle("Experiment 1: Overall Overall difference VAS-f - using confidence interval")
-ggplot(emmeans1, aes(Condition, emmean)) +        # ggplot2 plot with confidence intervals
-  geom_point() +
-  geom_errorbar(aes(ymin = lower.CL, ymax = upper.CL))
-
-# one sample t-tests
-VAS1 <- VAS[VAS$Day == 1,] 
-cohen.d(VAS1$Diff, f = NA, paired = TRUE, mu = 0.5)
-
-
-
 ```
 
 -----------------------------------------------------------------------------------
@@ -285,7 +247,6 @@ cohen.d(VAS1$Diff, f = NA, paired = TRUE, mu = 0.5)
 ##########################################
   ### PERFORMANCE/ ACCURACY/ OBJECTIVE CF ###
 #########################################
-
 # We will test Performance (weighted accuracy) with Condition (HCL/LCL) and Time (t1-t3) as within-subject factors.
 # interested in main effect e.g. t1>t4 and Condition x Time interaction on the Acc
 
