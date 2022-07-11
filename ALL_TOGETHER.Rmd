@@ -48,10 +48,10 @@ plotPrefix <- paste0(dirname(rstudioapi::getSourceEditorContext()$path),"/figure
 ```
 
 ```{r message=FALSE, warning = FALSE}
-
 ##########################################
   ### PVT/VIGILANCE/RT ###
 #########################################
+
 
 #### DOWNLOAD + CLEAN DATA ####
 
@@ -60,46 +60,26 @@ data <- read.csv(paste0(Dir, "PVT.csv"), header = TRUE, sep = )
 # mean 1/RT
 data$RT <- 1/(data$RT/1000) #1/RT  ==> other result
 
-# we have 97 iDs. Each participant is in either LCL or HCL. calculate MeanRT per ptt
-# for (i in 1:97) {
-#   data$Mean[data$ID==i & data$Test==1 & data$Day==1]= mean (data$RT[data$ID==i & data$Test==1 & data$Day==1])
-#   data$Mean[data$ID==i & data$Test==2 & data$Day==1]= mean (data$RT[data$ID==i & data$Test==2 & data$Day==1])
-#   data$Mean[data$ID==i & data$Test==1 & data$Day==2]= mean (data$RT[data$ID==i & data$Test==1 & data$Day==2])
-#   data$Mean[data$ID==i & data$Test==2 & data$Day==2]= mean (data$RT[data$ID==i & data$Test==2 & data$Day==2])
-# }
-# PVT <- data
-# # make dataframe with 1 measure per condition, participant and day: remove duplicate - now only 1 datapoint per MeanRT
-# PVT<- PVT[PVT$Trial.Number==1,]
-# length(unique(PVT$Mean))#388 =97*4
-# # We look only at before-test (test=1) because we want to measure baseline vigilance
-# PVT <- PVT[!(PVT$Test==2),] 
-# #remove unnecessairy columns
-# PVT = subset(PVT, select = -c(Local.Date, Participant.Private.ID, Task.Name, Trial.Number, Correct, timelimit))
-# data <- PVT
-
 ## CREATE DATAFRAME  with the MeanRT per ID, Day, Condition
-PVT <- group_by(data, Test, Day, Condition, ID) %>%
+PVT <- as.data.frame(group_by(data, Test, Day, Condition, ID) %>%
   summarise(
     count = n(),
     Mean = mean(RT, na.rm = TRUE)
-  )
-PVT <- as.data.frame(PVT)
-head(PVT) 
+  ))
+PVT <- PVT[!(PVT$Test==2),] # we will only look at before-test measures
 
 # visualise RT's: from 0 to 10 seconds 
 d<-melt(data.frame(RT=c(PVT$Mean))) # we melt to wide format
 distribution_plot (d, 'Mean')
 qqPlot(PVT$Mean) # clearly not a normal distribution: a big skew 
- 
 
 # make factors
 PVT$Day <- factor(PVT$Day)
 PVT$ID <- factor(PVT$ID)
-PVT$Condition <- factor(PVT$Condition)
-#check factors: levels(PVT$Condition)
+PVT$Condition <- factor(PVT$Condition)+
+
 
 ### CHECKING ASSUMPTIONS ####
-
 # Time x Condition 2-way ANOVA with interaction effect (what Borrogan did)
 res.aov2 <- aov(Mean ~ Condition * Day, data= PVT)
 summary(res.aov2)# no sign! this is good, means vigilance was same in all conditions
@@ -120,11 +100,6 @@ ggqqplot(PVT, "Mean", ggtheme = theme_bw()) +
 ggqqplot(PVT, "Mean", ggtheme = theme_bw()) +
   facet_grid( ~Condition) #  very obviously NOT a normal distribution
 
-# SPHERICITY: Mauchly's test
-x<-anova_test(data= PVT, dv= Mean, wid= ID, between= Condition, within= c(Day))
-get_anova_table(x, correction = c('GG')) #variances are NOT equal! 
-x$'Sphericity Corrections'
-
 # OUTLIERS
 summary(PVT$Mean)
 outliers <- boxplot(PVT$Mean, plot=FALSE)$out
@@ -132,26 +107,27 @@ outliers <- boxplot(PVT$Mean, plot=FALSE)$out
 PVT<- PVT[-which(PVT$Mean %in% outliers),]
 #visualise
 d<-melt(data.frame(RT=c(PVT$Mean))) # we melt to wide format
-distribution_plot (d, 'Mean')
-qqPlot(PVT$Mean) # stil not normal...
+distribution_plot (d, 'Mean') # much better
+qqPlot(PVT$Mean) # much better
+
 
 ### ANALYSIS ###
-# RT not normally distributed
 #https://www.frontiersin.org/articles/10.3389/fpsyg.2015.01171/full
 #https://stats.stackexchange.com/questions/254361/modeling-reaction-time-with-glmer
-# => glmer with inverse link
-two_w <- glmer (Mean~Condition * Day + (1|ID), data= PVT, family= inverse.gaussian(link="identity"))
-# two_w <- glmer(Acc ~ Condition * Time + (1 | ID), weights = count,family = binomial, data = EXP)
+# => glmer with inverse link: can handle RT that is not normally distributed
+two_w <- glmer (Mean~Condition * Day  + (1|ID), data= PVT, family= inverse.gaussian(link="identity"))
 emmeans1<- emmeans(two_w, pairwise ~ Condition * Day, adjust ="fdr", type = "response")
 emmean_dataframe <- summary(emmeans1)$emmeans
 
 Anova(two_w, type='III')
-summary(emmeans1)
+summary(emmeans1) ## Result the SAME for data with or without outliers (PVT & PVT2): because it is glmer
+# but removing the outliers makes visualisations much more readable
 #summary 
 sum <- sum_2 (PVT, 'Day', 'Condition', 'Mean')
 sum
 
-## VISUALISATION
+
+### VISUALISATION ###
 # boxplot 
 bxp <- ggboxplot(
   PVT, x = "Day", y = "Mean",
@@ -161,62 +137,18 @@ bxp
 ## plot with error bars
 pl <- plotty(PVT, emmean_dataframe, 'Day',  'Mean', 'Condition', 'emmean', 'Vigilance') 
 pl
-
-
-### Borrogan also looked at RT coefficient of variation CV=SD/Mean ###
-
-## CREATE DATAFRAME  with the MeanRT per ID, Day, Condition
-PVT <- group_by(data, Condition, Day, ID) %>%
-  summarise(
-    count = n(),
-    CV = sd(Mean, na.rm = TRUE)/mean(MeanRT, na.rm = TRUE)
-  )
-PVT <- as.data.frame(PVT)
-head(PVT) 
-
-# make factors
-PVT$Day <- factor(PVT$Day)
-PVT$ID <- factor(PVT$ID)
-PVT$Condition <- factor(PVT$Condition)
-#check factors: levels(PVT$Condition)
-
-
 ```
 --------------------------------------------------------------
 ```{r message=FALSE, warning = FALSE}
-
 ##########################################
   ### VAS-f: fatigue ###
 #########################################
-
-
-# subjective measure of fatigue on 1-10 scale
+# = subjective measure of fatigue on 1-10 scale
 # we want to know if there is a difference in VAS before and after Test
 
-#Download VAS-f data
-data <- read.csv(paste0(Dir, "VAS.csv"), header = TRUE, sep = )#VAS has 'quantised: 1-11 instead of 0-10
-data <-data[(grepl("quantised", data$Question.Key)),]
-
-# # take mean of the scale per participant, per day/test.
-# for (i in 1:97) {
-#   data$Mean[data$ID==i & data$Test==1 & data$Day==1]= mean (data$Response[data$ID==i & data$Test==1 & data$Day==1])
-#   data$Mean[data$ID==i & data$Test==2 & data$Day==1]= mean (data$Response[data$ID==i & data$Test==2 & data$Day==1])
-#   data$Mean[data$ID==i & data$Test==1 & data$Day==2]= mean (data$Response[data$ID==i & data$Test==1 & data$Day==2])
-#   data$Mean[data$ID==i & data$Test==2 & data$Day==2]= mean (data$Response[data$ID==i & data$Test==2 & data$Day==2])
-# }
-# data = subset(data, select = -c(Local.Date, Participant.Private.ID, Task.Name, Question.Key)) 
-# VAS<-data
-# #make dataframe with 1 measure per condition
-# VAS<- VAS[VAS$Question.Key=='0-quantised',]
-# difference score, devide by baseline (pre TloadBack) as a function of group (Day/condition): (2-1)/1
-# for (i in 1:97) {
-#   VAS$Diff[VAS$ID==i & VAS$Day==1] =
-#     ((VAS$Mean[VAS$Test==2 & VAS$ID==i & VAS$Day==1]- VAS$Mean[VAS$Test==1 & VAS$ID==i & VAS$Day==1])/VAS$Mean[VAS$Test==1 & VAS$ID==i & VAS$Day==1])
-#   VAS$Diff[VAS$ID==i & VAS$Day==2] =
-#     ((VAS$Mean[VAS$Test==2 & VAS$ID==i & VAS$Day==1]- VAS$Mean[VAS$Test==1 & VAS$ID==i & VAS$Day==2])/VAS$Mean[VAS$Test==1 & VAS$ID==i & VAS$Day==2])
-# }
-
-
+#### DOWNLOAD + CLEAN DATA ####
+data <- read.csv(paste0(Dir, "VAS.csv"), header = TRUE, sep = )
+data <-data[(grepl("quantised", data$Question.Key)),] #VAS has 'quantised: 1-11 instead of 0-10
 
 VAS <- as.data.frame(group_by(data, Test, Day, Condition, ID) %>%
   summarise(
@@ -224,15 +156,11 @@ VAS <- as.data.frame(group_by(data, Test, Day, Condition, ID) %>%
     Mean = mean(Response, na.rm = TRUE)
   ))
 
-#summary data
-sum_2(VAS, 'Condition', 'Day', 'Mean' )
-
 #factors
 VAS$Day <- as.factor(VAS$Day)
 VAS$Condition <- as.factor(VAS$Condition)
 VAS$ID <- as.factor(VAS$ID)
 names(VAS)[names(VAS)=="Test"] <- "Time"
-# VAS$Time <- as.POSIXct(VAS$Time, format=  "%Y-%m-%d %H:%M", tz = "UTC")
 VAS$Time <- as.factor(VAS$Time)
 
 ### MEAN IPV DIFF ####
@@ -276,6 +204,9 @@ qqPlot(VAS$Mean) #
 # PVT$RT = log(PVT$MeanRT)
 
 #### repeated-measures ANOVA ####
+
+#summary data
+sum_2(VAS, 'Condition', 'Day', 'Mean' )
 
 get_anova_table(x)
 
