@@ -258,17 +258,15 @@ bxp
 ![](ALL_TOGETHER_files/figure-html/PVT_Visualisations-1.png)<!-- -->
 
 ```r
-## plot with error bars
-pl <- plotty(PVT, emmean_dataframe, 'Day',  'Mean', 'Condition', 'response', 'Vigilance') 
-  #   geom_segment(aes(x =0.9, y = max_y+max_y/15, xend = 1.1, yend = max_y+max_y/15), size= 1)+ # top line
-  # annotate('text', x=1, y=max_y+max_y/15+max_y/100, label='**', size=7)+ # tar
-  #   geom_segment(aes(x =1.9, y = max_y+max_y/15, xend = 2.1, yend = max_y+max_y/15), size= 1) # top line
-  # # annotate('text', x=2, y=max_y+max_y/15+max_y/100, label='*', size=7) # star
-ggsave(pl, file=paste0(plotPrefix, "PVT_Plot.jpeg"), width = 2500, height = 1500, dpi = 300, units = "px")
-pl
+# ## plot with error bars
+# pl <- plotty(PVT, emmean_dataframe, 'Day',  'Mean', 'Condition', 'response', 'Vigilance') 
+#   #   geom_segment(aes(x =0.9, y = max_y+max_y/15, xend = 1.1, yend = max_y+max_y/15), size= 1)+ # top line
+#   # annotate('text', x=1, y=max_y+max_y/15+max_y/100, label='**', size=7)+ # tar
+#   #   geom_segment(aes(x =1.9, y = max_y+max_y/15, xend = 2.1, yend = max_y+max_y/15), size= 1) # top line
+#   # # annotate('text', x=2, y=max_y+max_y/15+max_y/100, label='*', size=7) # star
+# ggsave(pl, file=paste0(plotPrefix, "PVT_Plot.jpeg"), width = 2500, height = 1500, dpi = 300, units = "px")
+# pl
 ```
-
-![](ALL_TOGETHER_files/figure-html/PVT_Visualisations-2.png)<!-- -->
 --------------------------------------------------------------
 
 ## Subjective CF: VAS-f
