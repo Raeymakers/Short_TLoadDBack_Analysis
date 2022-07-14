@@ -132,16 +132,12 @@ two_way_plotf <- function(data, emmean_dataframe, var){
     geom_boxplot(data= data, aes(x=Day, y=.data[[var]], fill=Condition), outlier.shape=NA, alpha=.5, width=.3, colour='black')+
     geom_point(data= emmean_dataframe, aes(x = Day, y = emmean, fill=Condition), position= position_dodge(0.3), size=4)+
     theme(
-      legend.key.size=unit(1.3, 'cm'), # make keys of legend bigger
       legend.text=element_text(size=13), # text legend bigger
-      plot.title = element_text(size=rel(2)), # plot title bigger
       panel.border = element_blank(), # no border panel (APA)
       panel.background = element_blank(), #white simple background
       axis.line = element_line(colour = "black"), # axis lines black
-      panel.grid.major.y = element_line( size=.1, color="#dedede" ), #slight grey horizontal lines
-      axis.text.x=element_text(size=rel(2)), #size x axis title
-      axis.text.y=element_text(size=rel(1.3)),
-      axis.title.y=element_text(size=rel(1.5))) #size y axis title
+      panel.grid.major.y = element_line( size=.1, color="#dedede") #slight grey horizontal lines
+    )
       }
 
 one_w_plot <- function(data, Dataframe, xvar, yvar, Mean, title){
@@ -151,16 +147,32 @@ one_w_plot <- function(data, Dataframe, xvar, yvar, Mean, title){
     geom_point(data= Dataframe, aes(x = .data[[xvar]], y = .data[[Mean]], fill=.data[[xvar]]), position= position_dodge(0.1), size=4)+
     ggtitle(title)+
     theme(
-      legend.key.size=unit(1.3, 'cm'),
-      legend.text=element_text(size=13),
-      plot.title = element_text(size=rel(2)),
-      panel.border = element_blank(),
-      panel.background = element_blank(),
-      axis.line = element_line(colour = "black"),
-      panel.grid.major.y = element_line( size=.1, color="#dedede" ),
-      axis.text.x=element_text(size=rel(1.5)),
-      axis.title.y=element_text(size=rel(1.4)),
-      axis.title.x = element_blank())
+      legend.text=element_text(size=13), # text legend bigger
+      panel.border = element_blank(), # no border panel (APA)
+      panel.background = element_blank(), #white simple background
+      axis.line = element_line(colour = "black"), # axis lines black
+      panel.grid.major.y = element_line( size=.1, color="#dedede") #slight grey horizontal lines
+    )
+}
+
+plotti <- function(data, Dataframe, xvar, yvar, fillvar, Mean, title){
+  Dataframe$n= sum$n
+  Dataframe$ic = sum$ic
+  ggplot()+ 
+    geom_flat_violin(data= data, aes(x= .data[[xvar]], y= .data[[yvar]], fill=.data[[fillvar]]),position = position_nudge(x =.2, y = 0), alpha=.5, adjust = 1.5, colour = NA)+
+    geom_boxplot(data= data, aes(x= .data[[xvar]], y= .data[[yvar]], fill=.data[[fillvar]]), outlier.shape=NA, alpha= .45, width = .1, colour = "black")+
+    geom_point(data= Dataframe, aes(x =.data[[xvar]], y = .data[[Mean]], fill=.data[[fillvar]]), position= position_dodge(0.1), size=4)+
+    geom_errorbar( data= Dataframe, aes(x=.data[[xvar]], ymin=.data[[Mean]]-SE, ymax=.data[[Mean]]+SE, fill=.data[[fillvar]]),position= position_dodge(0.3), width=0.1, colour="black", alpha=0.9) + #SD error bar
+    geom_errorbar(data= Dataframe, aes(x=.data[[xvar]], ymin=.data[[Mean]]-ic, ymax=.data[[Mean]]+ic, fill=.data[[fillvar]]), position= position_dodge(0.4), width=0.1, colour="red", alpha=0.9)+ #C.I.
+    scale_fill_manual(values = c("blue", 'red'))+ #labels names with amount
+    ggtitle(title)+
+    theme(
+      legend.text=element_text(size=13), # text legend bigger
+      panel.border = element_blank(), # no border panel (APA)
+      panel.background = element_blank(), #white simple background
+      axis.line = element_line(colour = "black"), # axis lines black
+      panel.grid.major.y = element_line( size=.1, color="#dedede") #slight grey horizontal lines
+    )
 }
 
 plotty <- function(data, Dataframe, xvar, yvar, fillvar, Mean, title){
@@ -170,8 +182,8 @@ plotty <- function(data, Dataframe, xvar, yvar, fillvar, Mean, title){
     geom_flat_violin(data= data, aes(x= .data[[xvar]], y= .data[[yvar]], fill=.data[[fillvar]]),position = position_nudge(x =.2, y = 0), alpha=.5, adjust = 1.5, colour = NA)+
     geom_boxplot(data= data, aes(x= .data[[xvar]], y= .data[[yvar]], fill=.data[[fillvar]]), outlier.shape=NA, alpha= .45, width = .1, colour = "black")+
     geom_point(data= Dataframe, aes(x =.data[[xvar]], y = .data[[Mean]], fill=.data[[fillvar]]), position= position_dodge(0.1), size=4)+
-    geom_errorbar( data= Dataframe, aes(x=.data[[xvar]], ymin=.data[[Mean]]-SE, ymax=.data[[Mean]]+SE, fill=.data[[fillvar]]),position= position_dodge(0.3), width=0.1, colour="black", alpha=0.9, size=0.07) + #SD error bar
-    geom_errorbar(data= Dataframe, aes(x=.data[[xvar]], ymin=.data[[Mean]]-ic, ymax=.data[[Mean]]+ic, fill=.data[[fillvar]]), position= position_dodge(0.4), width=0.1, colour="red", alpha=0.9, size=0.07)+ #C.I.
+    geom_errorbar( data= Dataframe, aes(x=.data[[xvar]], ymin=.data[[Mean]]-SE, ymax=.data[[Mean]]+SE, fill=.data[[fillvar]]),position= position_dodge(0.3), width=0.1, colour="black", alpha=0.9) + #SD error bar
+    geom_errorbar(data= Dataframe, aes(x=.data[[xvar]], ymin=.data[[Mean]]-ic, ymax=.data[[Mean]]+ic, fill=.data[[fillvar]]), position= position_dodge(0.4), width=0.1, colour="red", alpha=0.9)+ #C.I.
     scale_fill_manual(values = c("blue", 'red'), #colours used in plot
                       name='', #legend gets no name
                       labels=c(
@@ -180,19 +192,13 @@ plotty <- function(data, Dataframe, xvar, yvar, fillvar, Mean, title){
                       ))+ #labels names with amount
     ggtitle(title)+
     theme(
-      legend.key.size=unit(1.3, 'cm'), # make keys of legend bigger
       legend.text=element_text(size=13), # text legend bigger
-      plot.title = element_text(size=rel(2)), # plot title bigger
       panel.border = element_blank(), # no border panel (APA)
       panel.background = element_blank(), #white simple background
       axis.line = element_line(colour = "black"), # axis lines black
-      panel.grid.major.y = element_line( size=.1, color="#dedede" ), #slight grey horizontal lines
-      axis.text.x=element_text(size=rel(2)), #size x axis title
-      axis.text.y=element_text(size=rel(1.3)),
-      axis.title.y=element_text(size=rel(1.5)), #size y axis titl
-      axis.title.x = element_blank()) # leave away extra x title (only 'foll' and 'lut')
+      panel.grid.major.y = element_line( size=.1, color="#dedede") #slight grey horizontal lines
+    )
 }
-
 
 ### summary
 sum_3 <- function (data, var1, var2, var3, depvar){
@@ -245,9 +251,12 @@ distribution_plot <- function (data, var_name){
 
 ### Correlation plot ####
 
-corrplot <- function (xvar, yvar){
+corrplot <- function (xvar, yvar, xlab, ylab){
   dataframe <- data.frame(xvar, yvar)
   ggscatter(dataframe, x = 'xvar', y= 'yvar',
             add='reg.line', fullrange=TRUE,
             conf.int=TRUE,
-            cor.coef=TRUE, cor.method='pearson')}
+            cor.coef=TRUE, cor.method='pearson')+
+    xlab(toString(xlab))+
+    ylab(toString(ylab))
+  }

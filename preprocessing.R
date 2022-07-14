@@ -351,3 +351,74 @@ write.csv(EXP,"EXP.csv",row.names=FALSE)
 # task-5too = PVT2_HCL_2
 # questionnaire-ty7à = VAS2_HCL_2
 
+
+##############################
+#                            #
+#  GENERAL INFORMATION       #
+#                            #
+#############################
+
+##### environment #####
+rm(list = ls()) # Clear environment
+cat("\014") # Clear console
+library(tidyverse)
+#Set your working directory to the folder in which all your CSV files are located
+setwd(dirname(rstudioapi::getActiveDocumentContext()$path))
+Dir = "C:/Users/ASUSTeK/OneDrive/Documenten/Github/Short_TLoadDBack/Data/"
+setwd(Dir)
+
+### Combining CSVs #
+files <- c("Informed_Consent.csv")
+
+combined <- lapply(files, read.csv) %>% 
+  bind_rows()
+
+# exclude rows that contain END OF FILE and BEGIN TASK
+combined<-combined[combined$Question.Key!="inf_consent",]
+combined<-combined[combined$Question.Key!="BEGIN QUESTIONNAIRE",]
+combined<-combined[combined$Question.Key!="date-day",]
+combined<-combined[combined$Question.Key!="date-month",]
+combined<-combined[combined$Question.Key!="date-year",]
+combined<-combined[combined$Question.Key!="NL",]
+combined<-combined[combined$Question.Key!="name",]
+combined<-combined[combined$Question.Key!="END QUESTIONNAIRE",]
+combined<-combined[combined$ï..Event.Index!="END OF FILE",]
+
+# export combined data as a CSV. 
+data <- combined
+
+### filtering
+
+#create sequential IDs
+levs<-unique(data$Participant.Private.ID)
+data$ID <- factor(data$Participant.Private.ID, levels=levs, labels=seq_along(levs))
+#rename column
+data <- dplyr::rename(data, Accuracy_Level = randomiser.2vg5)
+data$Condition[data$Accuracy_Level=="Accuracy_level_1"] = 'LCL' # Low Cognitive Load
+data$Condition[data$Accuracy_Level=="Accuracy_level_0.55"] = 'HCL'
+
+#Drop unnecessary columns
+AGES = subset(data, select = -c(ï..Event.Index, UTC.Timestamp, UTC.Date, Local.Timestamp, Local.Timezone, Experiment.ID, Experiment.Version, Task.Version,
+                                Tree.Node.Key, Repeat.Key, Schedule.ID, Participant.Public.ID,
+                                Participant.Starting.Group, Participant.Status, Participant.Completion.Code, Participant.External.Session.ID,
+                                Checkpoint, checkpoint.yiku, checkpoint.gn26, Accuracy_Level, Question.Key, Randomise.questionnaire.elements.) )
+
+AGES = subset(AGES, select = -c(Participant.Private.ID, Task.Name, Participant.Device.Type, Participant.Device, Participant.OS, Participant.Browser, Participant.Monitor.Size, Participant.Viewport.Size, Local.Date) )
+
+AGES$Response[AGES$Response=='19 jaar']=19
+AGES$Response[AGES$ID=='50']=18
+AGES$Response<-as.numeric(AGES$Response)
+
+AGES %>%
+  group_by(Condition) %>%
+  summarise(
+    n = n(), 
+    mean = mean(Response),
+    sd = sd(Response)
+  ) 
+
+#export combined data as a CSV. 
+write.csv(AGES,"AGES.csv",row.names=FALSE)
+
+
+
