@@ -1,16 +1,13 @@
 ---
 title: "Short_TloadDback"
 author: "Sofie Raeymakers"
-date: "7/6/2022"
-output: html_document
+date: "`r Sys.setlocale('LC_TIME', 'C'); format(Sys.time(), '%d\\\\. %B %Y')`"
+runtime: shiny
+output: 
+  html_document:
+    keep_md: yes
 ---
 
----
-title: "PVT_VAS-f_analysis"
-author: "Sofie Raeymakers"
-date: "5/3/2022"
-output: html_document
----
 
 <style type="text/css">
 .main-container {
@@ -207,11 +204,6 @@ VAS$Condition <- as.factor(VAS$Condition)
 VAS$ID <- as.factor(VAS$ID)
 names(VAS)[names(VAS)=="Test"] <- "Time"
 VAS$Time <- as.factor(VAS$Time)
-
-length(unique(VAS$ID[VAS$Condition=='HCL']))
-length(unique(VAS$ID[VAS$Condition=='LCL']))# unb µalanced
-VAS <- VAS[!(VAS$ID==49),] #remove ID 49
-
 
 ### CHECKING ASSUMPTIONS ####
 # Time x Condition 2-way ANOVA with interaction effect (what Borrogan did)
@@ -418,9 +410,6 @@ EXP$Condition <- as.factor(EXP$Condition)
 EXP$Day <- as.factor(EXP$Day)
 EXP$ID <- as.factor(EXP$ID)
 
-length(unique(EXP$ID[EXP$Condition=='HCL']))
-length(unique(EXP$ID[EXP$Condition=='LCL']))# unb µalanced
-EXP <- EXP[!(EXP$ID==49),] #remove ID 49
 
 ### CHECKING ASSUMPTIONS ####
 
@@ -636,6 +625,8 @@ names(VAS)[names(VAS)=="Mean"] <- "VASf"
 names(EXP)[names(EXP)=="Mean"] <- "Acc"
 df <- merge(VAS, EXP, by = c('Day','Time', 'Condition', 'ID'))
 
+length(unique(df$ID[df$Condition=='HCL']))
+length(unique(df$ID[df$Condition=='LCL']))
 
 ### VAS-f ###
 
