@@ -1488,88 +1488,107 @@ pl <- plotti(EXP1, emmean_dataframe, 'Stim', 'Mean', 'Time', 'prob', 'Stimulus')
 ##########################################
   ### CORRELATIONS ###
 #########################################C
-# 
-# # Create 1 big dataframe
-# names(VAS)[names(VAS)=="Mean"] <- "VASf"
-# names(EXP)[names(EXP)=="Mean"] <- "Acc"
-# df <- merge(VAS, EXP, by = c('Day','Time', 'Condition', 'ID'))
-# 
-# length(unique(df$ID[df$Condition=='HCL']))
-# length(unique(df$ID[df$Condition=='LCL']))
-# 
-# ### VAS-f ###
-# 
-# ## CORR VAS-f Mean score between Day 1 and Day 2 (test-retest reliability)
-# # HCL 
-# Day1 <- VAS$VASf[VAS$Day==1 & VAS$Condition=='HCL']
-# Day2 <- VAS$VASf[VAS$Day==2 & VAS$Condition=='HCL']
-# VASfHCL <- corrplot(Day1, Day2, 'Day1', 'Day2') +ggtitle('VASf HCL')
-# #LCL
-# Day1 <- VAS$VASf[VAS$Day==1 & VAS$Condition=='LCL']
-# Day2 <- VAS$VASf[VAS$Day==2 & VAS$Condition=='LCL']
-# VASfLCL <- corrplot(Day1, Day2, 'Day1', 'Day2') +ggtitle('VASf LCL')
-# # cor.test(VAS$VASf[VAS$Condition=='HCL'], VAS$VASf[VAS$Condition=='LCL'],  method="spearman")# not Pearson because: not normal distribution
-# # cor.test(VAS$Mean[VAS$Condition=='HCL'], VAS$Mean[VAS$Condition=='LCL'],  method="kendall")
-# 
-# ## CORR VAS-f delta between Day 1 and Day 2 
-# #HCL
-# Day1 <- VAS$VASf[VAS$Day==1 & VAS$Condition=='HCL' & VAS$Time==2]- VAS$VASf[VAS$Day==1 & VAS$Condition=='HCL' & VAS$Time==1]
-# Day2 <- VAS$VASf[VAS$Day==2 & VAS$Condition=='HCL' & VAS$Time==2]- VAS$VASf[VAS$Day==2 & VAS$Condition=='HCL' & VAS$Time==1]
-# VASf_delta_HCL <- corrplot(Day1, Day2, 'Day1', 'Day2') +ggtitle('VASf delta HCL')
-# #LCL
-# Day1 <- VAS$VASf[VAS$Day==1 & VAS$Condition=='LCL' & VAS$Time==2]- VAS$VASf[VAS$Day==1 & VAS$Condition=='LCL' & VAS$Time==1]
-# Day2 <- VAS$VASf[VAS$Day==2 & VAS$Condition=='LCL' & VAS$Time==2]- VAS$VASf[VAS$Day==2 & VAS$Condition=='LCL' & VAS$Time==1]
-# VASf_delta_LCL <- corrplot(Day1, Day2, 'Day1', 'Day2') +ggtitle('VASf delta LCL')
-# 
-# VASfCORR <- ggarrange(VASfHCL, VASfLCL, VASf_delta_HCL, VASf_delta_LCL + rremove("x.text"), 
-#           labels = c("A", "B", "C", "D"),
-#           ncol = 2, nrow = 2)
-# ggsave(VASfCORR, file=paste0(plotPrefix, "VASf_CORR.jpg"), width = 2500, height = 1500, dpi = 300, units = "px")
-# VASfCORR
-# 
-# ### Accuracy ###
-# 
-# ## CORR Accuracy Day 1 and Day 2  (test-retest reliability)
-# #HCL
-# Day1 <- EXP$Acc[EXP$Day==1 & EXP$Condition=='HCL' & EXP$Time==2]- EXP$Acc[EXP$Day==1 & EXP$Condition=='HCL' & EXP$Time==1]
-# Day2 <- EXP$Acc[EXP$Day==2 & EXP$Condition=='HCL' & EXP$Time==2]- EXP$Acc[EXP$Day==2 & EXP$Condition=='HCL' & EXP$Time==1]
-# EXPHCL<-corrplot(Day1, Day2, 'Day1', 'Day2') +ggtitle('Performance HCL')
-# #LCL
-# Day1 <- EXP$Acc[EXP$Day==1 & EXP$Condition=='LCL' & EXP$Time==2]- EXP$Acc[EXP$Day==1 & EXP$Condition=='LCL' & EXP$Time==1]
-# Day2 <- EXP$Acc[EXP$Day==2 & EXP$Condition=='LCL' & EXP$Time==2]- EXP$Acc[EXP$Day==2 & EXP$Condition=='LCL' & EXP$Time==1]
-# EXPLCL<-corrplot(Day1, Day2, 'Day1', 'Day2') +ggtitle('Performance LCL')
-# 
-# ## CORR Accuracy delta between Day 1 and Day 2 
-# #HCL
-# Day1 <- EXP$Acc[EXP$Day==1 & EXP$Condition=='HCL' & EXP$Time==2]- EXP$Acc[EXP$Day==1 & EXP$Condition=='HCL' & EXP$Time==1]
-# Day2 <- EXP$Acc[EXP$Day==2 & EXP$Condition=='HCL' & EXP$Time==2]- EXP$Acc[EXP$Day==2 & EXP$Condition=='HCL' & EXP$Time==1]
-# EXP_DELTA_HCL<- corrplot(Day1, Day2, 'Day1', 'Day2') +ggtitle('Performance delta HCL') # negative correlation: when high in day 1, low in day 2
-# #LCL
-# Day1 <- EXP$Acc[EXP$Day==1 & EXP$Condition=='LCL' & EXP$Time==2]- EXP$Acc[EXP$Day==1 & EXP$Condition=='LCL' & EXP$Time==1]
-# Day2 <- EXP$Acc[EXP$Day==2 & EXP$Condition=='LCL' & EXP$Time==2]- EXP$Acc[EXP$Day==2 & EXP$Condition=='LCL' & EXP$Time==1]
-# EXP_DELTA_LCL<-corrplot(Day1, Day2, 'Day1', 'Day2') +ggtitle('Performance delta LCL') # positive correlation: when high in day 1, high in day 2
-# 
-# EXPCORR <- ggarrange(EXPHCL, EXPLCL, EXP_DELTA_HCL, EXP_DELTA_LCL + rremove("x.text"), 
-#           labels = c("A", "B", "C", "D"),
-#           ncol = 2, nrow = 2)
-# ggsave(EXPCORR, file=paste0(plotPrefix, "EXP_CORR.jpg"), width = 2500, height = 1500, dpi = 300, units = "px")
-# EXPCORR
 
+ # Create 1 big dataframe
+ names(VAS)[names(VAS)=="Mean"] <- "VASf"
+ names(EXP)[names(EXP)=="Mean"] <- "Acc"
+ df <- merge(VAS, EXP, by = c('Day','Time', 'Condition', 'ID'))
 
-# ### VAS-f * Acc ###
-# ## CORR delta (change) VAS-f and delta Acc
-# #HCL
-# VAS_f <- df$VASf[df$Time==2 & df$Condition=='HCL'] - df$VASf[df$Time==1 & df$Condition=='HCL']
-# ACC<- df$Acc[df$Time==2 & df$Condition=='HCL'] - df$Acc[df$Time==1 & df$Condition=='HCL']
-# DELTAHCL<- corrplot(VAS_f, ACC, 'VASf delta', 'Performance delta') +ggtitle('delta correlations HCL') # no correlation: change before-after test in VASf no correlation with obj CF changes 
-# #LCL
-# VAS_f <- df$VASf[df$Time==2 & df$Condition=='LCL'] - df$VASf[df$Time==1 & df$Condition=='LCL']
-# ACC<- df$Acc[df$Time==2 & df$Condition=='LCL'] - df$Acc[df$Time==1 & df$Condition=='LCL']
-# DELTALCL<- corrplot(VAS_f, ACC, 'VASf delta', 'Performance delta') +ggtitle('delta correlations LCL') 
-# 
-# DELTACORR<- ggarrange (DELTAHCL, DELTALCL+ rremove('x.text'), labels= c('A', 'B'))
-# ggsave(DELTACORR, file=paste0(plotPrefix, "DELAT_CORR.jpg"), width = 2500, height = 1500, dpi = 300, units = "px")
-# DELTACORR
+ length(unique(df$ID[df$Condition=='HCL']))
 ```
+
+```
+## [1] 48
+```
+
+```r
+ length(unique(df$ID[df$Condition=='LCL']))
+```
+
+```
+## [1] 48
+```
+
+```r
+ ### VAS-f ###
+
+ ## CORR VAS-f Mean score between Day 1 and Day 2 (test-retest reliability)
+ # HCL
+ Day1 <- VAS$VASf[VAS$Day==1 & VAS$Condition=='HCL']
+ Day2 <- VAS$VASf[VAS$Day==2 & VAS$Condition=='HCL']
+ VASfHCL <- corrplot(Day1, Day2, 'Day1', 'Day2') +ggtitle('VASf HCL')
+ #LCL
+ Day1 <- VAS$VASf[VAS$Day==1 & VAS$Condition=='LCL']
+ Day2 <- VAS$VASf[VAS$Day==2 & VAS$Condition=='LCL']
+ VASfLCL <- corrplot(Day1, Day2, 'Day1', 'Day2') +ggtitle('VASf LCL')
+ # cor.test(VAS$VASf[VAS$Condition=='HCL'], VAS$VASf[VAS$Condition=='LCL'],  method="spearman")# not Pearson because: not normal distribution
+ # cor.test(VAS$Mean[VAS$Condition=='HCL'], VAS$Mean[VAS$Condition=='LCL'],  method="kendall")
+
+ ## CORR VAS-f delta between Day 1 and Day 2
+ #HCL
+ Day1 <- VAS$VASf[VAS$Day==1 & VAS$Condition=='HCL' & VAS$Time==2]- VAS$VASf[VAS$Day==1 & VAS$Condition=='HCL' & VAS$Time==1]
+ Day2 <- VAS$VASf[VAS$Day==2 & VAS$Condition=='HCL' & VAS$Time==2]- VAS$VASf[VAS$Day==2 & VAS$Condition=='HCL' & VAS$Time==1]
+ VASf_delta_HCL <- corrplot(Day1, Day2, 'Day1', 'Day2') +ggtitle('VASf delta HCL')
+ #LCL
+ Day1 <- VAS$VASf[VAS$Day==1 & VAS$Condition=='LCL' & VAS$Time==2]- VAS$VASf[VAS$Day==1 & VAS$Condition=='LCL' & VAS$Time==1]
+ Day2 <- VAS$VASf[VAS$Day==2 & VAS$Condition=='LCL' & VAS$Time==2]- VAS$VASf[VAS$Day==2 & VAS$Condition=='LCL' & VAS$Time==1]
+ VASf_delta_LCL <- corrplot(Day1, Day2, 'Day1', 'Day2') +ggtitle('VASf delta LCL')
+
+ VASfCORR <- ggarrange(VASfHCL, VASfLCL, VASf_delta_HCL, VASf_delta_LCL + rremove("x.text"),
+           labels = c("A", "B", "C", "D"),
+           ncol = 2, nrow = 2)
+ ggsave(VASfCORR, file=paste0(plotPrefix, "VASf_CORR.jpg"), width = 2500, height = 1500, dpi = 300, units = "px")
+ VASfCORR
+```
+
+![](ALL_TOGETHER_files/figure-html/unnamed-chunk-1-1.png)<!-- -->
+
+```r
+ ### Accuracy ###
+# 
+#  ## CORR Accuracy Day 1 and Day 2  (test-retest reliability)
+#  #HCL
+#  EXP <- EXP[!(EXP$ID==49),]
+#  Day1 <- EXP$Acc[EXP$Day==1 & EXP$Condition=='HCL' & EXP$Time==2]- EXP$Acc[EXP$Day==1 & EXP$Condition=='HCL' & EXP$Time==1]
+#  Day2 <- EXP$Acc[EXP$Day==2 & EXP$Condition=='HCL' & EXP$Time==2]- EXP$Acc[EXP$Day==2 & EXP$Condition=='HCL' & EXP$Time==1]
+#  EXPHCL<-corrplot(Day1, Day2, 'Day1', 'Day2') +ggtitle('Performance HCL')
+#  #LCL
+#  Day1 <- EXP$Acc[EXP$Day==1 & EXP$Condition=='LCL' & EXP$Time==2]- EXP$Acc[EXP$Day==1 & EXP$Condition=='LCL' & EXP$Time==1]
+#  Day2 <- EXP$Acc[EXP$Day==2 & EXP$Condition=='LCL' & EXP$Time==2]- EXP$Acc[EXP$Day==2 & EXP$Condition=='LCL' & EXP$Time==1]
+#  EXPLCL<-corrplot(Day1, Day2, 'Day1', 'Day2') +ggtitle('Performance LCL')
+# 
+#  ## CORR Accuracy delta between Day 1 and Day 2
+#  #HCL
+#  Day1 <- EXP$Acc[EXP$Day==1 & EXP$Condition=='HCL' & EXP$Time==2]- EXP$Acc[EXP$Day==1 & EXP$Condition=='HCL' & EXP$Time==1]
+#  Day2 <- EXP$Acc[EXP$Day==2 & EXP$Condition=='HCL' & EXP$Time==2]- EXP$Acc[EXP$Day==2 & EXP$Condition=='HCL' & EXP$Time==1]
+#  EXP_DELTA_HCL<- corrplot(Day1, Day2, 'Day1', 'Day2') +ggtitle('Performance delta HCL') # negative correlation: when high in day 1, low in day 2
+#  #LCL
+#  Day1 <- EXP$Acc[EXP$Day==1 & EXP$Condition=='LCL' & EXP$Time==2]- EXP$Acc[EXP$Day==1 & EXP$Condition=='LCL' & EXP$Time==1]
+#  Day2 <- EXP$Acc[EXP$Day==2 & EXP$Condition=='LCL' & EXP$Time==2]- EXP$Acc[EXP$Day==2 & EXP$Condition=='LCL' & EXP$Time==1]
+#  EXP_DELTA_LCL<-corrplot(Day1, Day2, 'Day1', 'Day2') +ggtitle('Performance delta LCL') # positive correlation: when high in day 1, high in day 2
+# 
+#  EXPCORR <- ggarrange(EXPHCL, EXPLCL, EXP_DELTA_HCL, EXP_DELTA_LCL + rremove("x.text"),
+#            labels = c("A", "B", "C", "D"),
+#            ncol = 2, nrow = 2)
+#  ggsave(EXPCORR, file=paste0(plotPrefix, "EXP_CORR.jpg"), width = 2500, height = 1500, dpi = 300, units = "px")
+#  EXPCORR
+
+ ### VAS-f * Acc ###
+ ## CORR delta (change) VAS-f and delta Acc
+ #HCL
+ VAS_f <- df$VASf[df$Time==2 & df$Condition=='HCL'] - df$VASf[df$Time==1 & df$Condition=='HCL']
+ ACC<- df$Acc[df$Time==2 & df$Condition=='HCL'] - df$Acc[df$Time==1 & df$Condition=='HCL']
+ DELTAHCL<- corrplot(VAS_f, ACC, 'VASf delta', 'Performance delta') +ggtitle('delta correlations HCL') # no correlation: change before-after test in VASf no correlation with obj CF changes
+ #LCL
+ VAS_f <- df$VASf[df$Time==2 & df$Condition=='LCL'] - df$VASf[df$Time==1 & df$Condition=='LCL']
+ ACC<- df$Acc[df$Time==2 & df$Condition=='LCL'] - df$Acc[df$Time==1 & df$Condition=='LCL']
+ DELTALCL<- corrplot(VAS_f, ACC, 'VASf delta', 'Performance delta') +ggtitle('delta correlations LCL')
+
+ DELTACORR<- ggarrange (DELTAHCL, DELTALCL+ rremove('x.text'), labels= c('A', 'B'))
+ ggsave(DELTACORR, file=paste0(plotPrefix, "DELAT_CORR.jpg"), width = 2500, height = 1500, dpi = 300, units = "px")
+ DELTACORR
+```
+
+![](ALL_TOGETHER_files/figure-html/unnamed-chunk-1-2.png)<!-- -->
 
 
