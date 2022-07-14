@@ -19,42 +19,6 @@ output:
 
 # A Data Analysis Report {.tabset}
 
-```r
-##### Set environment #####
-
-# Install packages
-list.of.packages <- c('tidyverse', 'effects', 'emmeans', 'data.table', 'dplyr', 'lme4', 'ggplot2', 'MuMIn', 'effsize', 'reshape2',
-                      'cowplot', 'car', 'ggpubr', 'rstatix') # All relevant packages
-new.packages <- list.of.packages[!(list.of.packages %in% installed.packages()[,"Package"])] # Check if any of these packages are not yet installed
-if(length(new.packages)) install.packages(new.packages) # If any packages are not yet installed, install them
-
-library(tidyverse)
-library(effects)
-library(emmeans)
-library(data.table)
-library(dplyr)
-library(lme4)
-library(ggplot2)
-library(MuMIn)
-library(effsize)
-library(reshape2)
-library(cowplot)
-library(car)
-library(ggpubr)
-library(rstatix)
-
-# Get and declare functions
-setwd(dirname(rstudioapi::getActiveDocumentContext()$path))
-source("C:/Users/ASUSTeK/OneDrive/Documenten/Github/Short_TLoadDBack/functions.R") # file in the same directory for functions so they're together
-#Set working directory to the folder in which all CSV files are located
-Dir = "C:/Users/ASUSTeK/OneDrive/Documenten/Github/Short_TLoadDBack/Data/"
-setwd(Dir)
-
-# save figures
-if (!dir.exists("figures")){ # Create folder for storing the figures if it doesn't exist yet
-  dir.create("figures")}
-plotPrefix <- paste0(Dir,"figures/") # Prefix to easily store figures later
-```
 
 Sofie Raeymakers
 
@@ -65,11 +29,10 @@ Sofie Raeymakers
 
 explaination study
 
-### Vigilance
+## Vigilance
 
 we want to see if PVT/vigilance is different in day 1 compared to day 2 and in HCl compared to LCl (Condition) before the test
 
-##### subtitle
 
 
 
@@ -281,6 +244,7 @@ sum
 ## 3 2     HCL          43  2.69 0.250 0.0381 0.0769
 ## 4 2     LCL          45  2.71 0.260 0.0388 0.0781
 ```
+### VISUALISATIONS
 
 ```r
 ### VISUALISATION ###
@@ -291,7 +255,7 @@ bxp <- ggboxplot(
 bxp
 ```
 
-![](ALL_TOGETHER_files/figure-html/PVT-9.png)<!-- -->
+![](ALL_TOGETHER_files/figure-html/PVT_Visualisations-1.png)<!-- -->
 
 ```r
 ## plot with error bars
@@ -304,7 +268,7 @@ ggsave(pl, file=paste0(plotPrefix, "PVT_Plot.jpeg"), width = 2500, height = 1500
 pl
 ```
 
-![](ALL_TOGETHER_files/figure-html/PVT-10.png)<!-- -->
+![](ALL_TOGETHER_files/figure-html/PVT_Visualisations-2.png)<!-- -->
 --------------------------------------------------------------
 
 ## Subjective CF: VAS-f

@@ -22,8 +22,7 @@ cat("\014") # Clear console
 knitr::opts_chunk$set(echo = TRUE)
 ```
 # A Data Analysis Report {.tabset}
-
-```{r message=FALSE, warning = FALSE}
+```{r packages, include = FALSE}
 ##### Set environment #####
 
 # Install packages
@@ -69,11 +68,10 @@ Sofie Raeymakers
 
 explaination study
 
-### Vigilance
+## Vigilance
 
 we want to see if PVT/vigilance is different in day 1 compared to day 2 and in HCl compared to LCl (Condition) before the test
 
-##### subtitle
 
 
 ```{r PVT, message=FALSE, warning = FALSE}
@@ -158,6 +156,9 @@ summary(emmeans1) ## Result the SAME for data with or without outliers (PVT & PV
 sum <- sum_2 (PVT, 'Day', 'Condition', 'Mean')
 sum
 
+```
+### VISUALISATIONS
+```{r PVT_Visualisations, message=FALSE, warning = FALSE}
 
 ### VISUALISATION ###
 # boxplot 
@@ -166,14 +167,16 @@ bxp <- ggboxplot(
   color = "Condition", palette = "jco")
 bxp
 
-## plot with error bars
-pl <- plotty(PVT, emmean_dataframe, 'Day',  'Mean', 'Condition', 'response', 'Vigilance') 
-  #   geom_segment(aes(x =0.9, y = max_y+max_y/15, xend = 1.1, yend = max_y+max_y/15), size= 1)+ # top line
-  # annotate('text', x=1, y=max_y+max_y/15+max_y/100, label='**', size=7)+ # tar
-  #   geom_segment(aes(x =1.9, y = max_y+max_y/15, xend = 2.1, yend = max_y+max_y/15), size= 1) # top line
-  # # annotate('text', x=2, y=max_y+max_y/15+max_y/100, label='*', size=7) # star
-ggsave(pl, file=paste0(plotPrefix, "PVT_Plot.jpeg"), width = 2500, height = 1500, dpi = 300, units = "px")
-pl
+# ## plot with error bars
+# pl <- plotty(PVT, emmean_dataframe, 'Day',  'Mean', 'Condition', 'response', 'Vigilance') 
+#   #   geom_segment(aes(x =0.9, y = max_y+max_y/15, xend = 1.1, yend = max_y+max_y/15), size= 1)+ # top line
+#   # annotate('text', x=1, y=max_y+max_y/15+max_y/100, label='**', size=7)+ # tar
+#   #   geom_segment(aes(x =1.9, y = max_y+max_y/15, xend = 2.1, yend = max_y+max_y/15), size= 1) # top line
+#   # # annotate('text', x=2, y=max_y+max_y/15+max_y/100, label='*', size=7) # star
+# ggsave(pl, file=paste0(plotPrefix, "PVT_Plot.jpeg"), width = 2500, height = 1500, dpi = 300, units = "px")
+# pl
+
+
 ```
 --------------------------------------------------------------
 
