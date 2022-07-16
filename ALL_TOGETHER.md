@@ -1,20 +1,20 @@
 ---
 title: "Short_TloadDback"
 author: "Sofie Raeymakers"
-date: "14\\. July 2022"
+date: "16\\. July 2022"
 output: 
   html_document:
     keep_md: yes
 ---
 
 
-<style type="text/css">
-.main-container {
-  max-width: 1800px;
-  margin-left: auto;
-  margin-right: auto;
-}
-</style>
+<!-- <style type="text/css"> -->
+<!-- .main-container { -->
+<!--   max-width: 1800px; -->
+<!--   margin-left: auto; -->
+<!--   margin-right: auto; -->
+<!-- } -->
+<!-- </style> -->
 
 
 # A Data Analysis Report {.tabset}
@@ -61,13 +61,13 @@ d<-melt(data.frame(RT=c(PVT$Mean))) # we melt to wide format
 distribution_plot (d, 'Mean')
 ```
 
-![](ALL_TOGETHER_files/figure-html/PVT-1.png)<!-- -->
+<img src="ALL_TOGETHER_files/figure-html/PVT-1.png"  />
 
 ```r
 qqPlot(PVT$Mean) # clearly not a normal distribution: a big skew 
 ```
 
-![](ALL_TOGETHER_files/figure-html/PVT-2.png)<!-- -->
+<img src="ALL_TOGETHER_files/figure-html/PVT-2.png"  />
 
 ```
 ## [1]  39 102
@@ -99,7 +99,7 @@ summary(res.aov2)# no sign! this is good, means vigilance was same in all condit
 plot(res.aov2, 1) # residuqls vs fits plot shows no evident relationship residuals and fitted values (means of groups)
 ```
 
-![](ALL_TOGETHER_files/figure-html/PVT-3.png)<!-- -->
+<img src="ALL_TOGETHER_files/figure-html/PVT-3.png"  />
 
 ```r
 # NORMALITY
@@ -123,21 +123,21 @@ shapiro.test(x=aov_residuals) # no normality!
 plot(res.aov2, 2) #clearly not normal
 ```
 
-![](ALL_TOGETHER_files/figure-html/PVT-4.png)<!-- -->
+<img src="ALL_TOGETHER_files/figure-html/PVT-4.png"  />
 
 ```r
 ggqqplot(PVT, "Mean", ggtheme = theme_bw()) +
   facet_grid(Day ~ Condition)
 ```
 
-![](ALL_TOGETHER_files/figure-html/PVT-5.png)<!-- -->
+<img src="ALL_TOGETHER_files/figure-html/PVT-5.png"  />
 
 ```r
 ggqqplot(PVT, "Mean", ggtheme = theme_bw()) +
   facet_grid( ~Condition) #  very obviously NOT a normal distribution
 ```
 
-![](ALL_TOGETHER_files/figure-html/PVT-6.png)<!-- -->
+<img src="ALL_TOGETHER_files/figure-html/PVT-6.png"  />
 
 ```r
 # OUTLIERS
@@ -158,13 +158,13 @@ d<-melt(data.frame(RT=c(PVT$Mean))) # we melt to wide format
 distribution_plot (d, 'Mean') # much better
 ```
 
-![](ALL_TOGETHER_files/figure-html/PVT-7.png)<!-- -->
+<img src="ALL_TOGETHER_files/figure-html/PVT-7.png"  />
 
 ```r
 qqPlot(PVT$Mean) # much better
 ```
 
-![](ALL_TOGETHER_files/figure-html/PVT-8.png)<!-- -->
+<img src="ALL_TOGETHER_files/figure-html/PVT-8.png"  />
 
 ```
 ## [1] 41 49
@@ -244,29 +244,365 @@ sum
 ## 3 2     HCL          43  2.69 0.250 0.0381 0.0769
 ## 4 2     LCL          45  2.71 0.260 0.0388 0.0781
 ```
-### VISUALISATIONS
+
+####VISUALISATIONS
 
 ```r
+# ui<- fluidPage( # makes the User Interface
+#      tabsetPanel(type = "tab",
+#                   tabPanel("bxp", plotOutput("bxp"))
+#                  # ,
+#                  #  tabPanel("splitviolin", plotOutput("splitviolin"))
+#          ))
+# 
+# server <- function (input, output, session){ 
+#   
+#    output$bxp <- renderPlot({
+#      ggboxplot(
+#       PVT, x = "Day", y = "Mean",
+#       color = "Condition", palette = "jco")
+#    }, height=700, width=1100)
+#     
+#      # output$splitviolin <- renderPlot({
+#      #  plotty()(PVT, emmean_dataframe, 'Day',  'Mean', 'Condition', 'response', 'Vigilance')
+#      #  ggsave(pl, file=paste0(plotPrefix, "PVT_Plot.jpeg"), width = 2500, height = 1500, dpi = 300, units = "px")
+#      # }, height=700, width=1100)
+# 
+# }
+# shinyApp(ui=ui, server=server, options=list(height=1000))
+
 ### VISUALISATION ###
-# boxplot 
+# boxplot
 bxp <- ggboxplot(
   PVT, x = "Day", y = "Mean",
   color = "Condition", palette = "jco")
 bxp
 ```
 
-![](ALL_TOGETHER_files/figure-html/PVT_Visualisations-1.png)<!-- -->
+<img src="ALL_TOGETHER_files/figure-html/visualisations_PVT-1.png"  />
 
 ```r
-# ## plot with error bars
-# pl <- plotty(PVT, emmean_dataframe, 'Day',  'Mean', 'Condition', 'response', 'Vigilance') 
-#   #   geom_segment(aes(x =0.9, y = max_y+max_y/15, xend = 1.1, yend = max_y+max_y/15), size= 1)+ # top line
-#   # annotate('text', x=1, y=max_y+max_y/15+max_y/100, label='**', size=7)+ # tar
-#   #   geom_segment(aes(x =1.9, y = max_y+max_y/15, xend = 2.1, yend = max_y+max_y/15), size= 1) # top line
-#   # # annotate('text', x=2, y=max_y+max_y/15+max_y/100, label='*', size=7) # star
-# ggsave(pl, file=paste0(plotPrefix, "PVT_Plot.jpeg"), width = 2500, height = 1500, dpi = 300, units = "px")
-# pl
+## plot with error bars
+pl <- plotty(PVT, emmean_dataframe, 'Day',  'Mean', 'Condition', 'response', 'Vigilance')
+ggsave(pl, file=paste0(plotPrefix, "PVT_Plot.jpeg"), width = 2500, height = 1500, dpi = 300, units = "px")
+pl
 ```
+
+<img src="ALL_TOGETHER_files/figure-html/visualisations_PVT-2.png"  />
+
+```r
+## plot with error bars
+pl <- plotty(PVT, emmean_dataframe, 'Day',  'Mean', 'Condition', 'response', 'Vigilance')
+  #   geom_segment(aes(x =0.9, y = max_y+max_y/15, xend = 1.1, yend = max_y+max_y/15), size= 1)+ # top line
+  # annotate('text', x=1, y=max_y+max_y/15+max_y/100, label='**', size=7)+ # tar
+  #   geom_segment(aes(x =1.9, y = max_y+max_y/15, xend = 2.1, yend = max_y+max_y/15), size= 1) # top line
+  # # annotate('text', x=2, y=max_y+max_y/15+max_y/100, label='*', size=7) # star
+ggsave(pl, file=paste0(plotPrefix, "PVT_Plot.jpeg"), width = 2500, height = 1500, dpi = 300, units = "px")
+pl
+```
+
+<img src="ALL_TOGETHER_files/figure-html/visualisations_PVT-3.png"  />
+
+### Differences
+
+
+```r
+#Download PVT data (this datafile is made in 'preprocessing')
+data <- read.csv(paste0(Dir, "PVT.csv"), header = TRUE, sep = )
+# mean 1/RT
+data$RT <- 1/(data$RT/1000) #1/RT  ==> other result
+
+## CREATE DATAFRAME  with the MeanRT per ID, Day, Condition
+PVT <- as.data.frame(group_by(data, Test, Day, Condition, ID) %>%
+  summarise(
+    count = n(),
+    Mean = mean(RT, na.rm = TRUE)
+  ))
+
+# visualise RT's: from 0 to 10 seconds 
+d<-melt(data.frame(RT=c(PVT$Mean))) # we melt to wide format
+distribution_plot (d, 'Mean')
+```
+
+<img src="ALL_TOGETHER_files/figure-html/PVT_Differences-1.png"  />
+
+```r
+qqPlot(PVT$Mean) # clearly not a normal distribution: a big skew 
+```
+
+<img src="ALL_TOGETHER_files/figure-html/PVT_Differences-2.png"  />
+
+```
+## [1] 288  39
+```
+
+```r
+# make factors
+PVT$Day <- factor(PVT$Day)
+PVT$ID <- factor(PVT$ID)
+PVT$Condition <- factor(PVT$Condition)
+# difference score, devide by baseline (pre TloadBack) as a function of group (Day/condition): (2-1)/1
+for (i in 1:97) {
+  PVT$Diff[PVT$ID==i & PVT$Day==1] =
+    ( ( PVT$Mean[PVT$Test==2 & PVT$ID==i & PVT$Day==1]- PVT$Mean[PVT$Test==1 & PVT$ID==i & PVT$Day==1] )/PVT$Mean[PVT$Test==1 & PVT$ID==i & PVT$Day==1] )
+  
+  PVT$Diff[PVT$ID==i & PVT$Day==2] =
+    ((PVT$Mean[PVT$Test==2 & PVT$ID==i & PVT$Day==2]- PVT$Mean[PVT$Test==1 & PVT$ID==i & PVT$Day==2])/PVT$Mean[PVT$Test==1 & PVT$ID==i & PVT$Day==2])
+}
+
+
+### CHECKING ASSUMPTIONS ####
+# Time x Condition 2-way ANOVA with interaction effect (what Borrogan did)
+res.aov2 <- aov(Diff ~ Condition * Day, data= PVT)
+summary(res.aov2)
+```
+
+```
+##                Df Sum Sq Mean Sq F value Pr(>F)
+## Condition       1    2.1  2.0783   1.877  0.171
+## Day             1    1.6  1.6434   1.484  0.224
+## Condition:Day   1    0.7  0.7349   0.664  0.416
+## Residuals     384  425.1  1.1071
+```
+
+```r
+# HOMOGENEITY OF VARIANCE
+plot(res.aov2, 1) # residuqls vs fits plot shows no evident relationship residuals and fitted values (Diffs of groups)
+```
+
+<img src="ALL_TOGETHER_files/figure-html/PVT_Differences-3.png"  />
+
+```r
+# NORMALITY
+aov_residuals <- residuals (object=res.aov2)
+shapiro.test(x=aov_residuals) #
+```
+
+```
+## 
+## 	Shapiro-Wilk normality test
+## 
+## data:  aov_residuals
+## W = 0.17526, p-value < 2.2e-16
+```
+
+```r
+PVT %>%
+  group_by(Condition, Day) %>%
+  shapiro_test(Diff) #
+```
+
+```
+## # A tibble: 4 x 5
+##   Day   Condition variable statistic        p
+##   <fct> <fct>     <chr>        <dbl>    <dbl>
+## 1 1     HCL       Diff         0.368 2.02e-18
+## 2 2     HCL       Diff         0.648 7.92e-14
+## 3 1     LCL       Diff         0.174 5.89e-21
+## 4 2     LCL       Diff         0.360 1.04e-18
+```
+
+```r
+#visualisation
+plot(res.aov2, 2) #normal
+```
+
+<img src="ALL_TOGETHER_files/figure-html/PVT_Differences-4.png"  />
+
+```r
+ggqqplot(PVT, "Diff", ggtheme = theme_bw()) +
+  facet_grid(Day ~ Condition)
+```
+
+<img src="ALL_TOGETHER_files/figure-html/PVT_Differences-5.png"  />
+
+```r
+ggqqplot(PVT, "Diff", ggtheme = theme_bw()) +
+  facet_grid( ~Condition) #  very obviously NOT a normal distribution
+```
+
+<img src="ALL_TOGETHER_files/figure-html/PVT_Differences-6.png"  />
+
+```r
+# SPHERICITY: Mauchly's test
+x<-anova_test(data= PVT, dv= Diff, wid= ID, between= Condition, within= c(Test, Day))
+get_anova_table(x, correction = c('GG')) #variances are NOT equal!
+```
+
+```
+## ANOVA Table (type III tests)
+## 
+##               Effect DFn DFd     F     p p<.05      ges
+## 1          Condition   1  95 0.980 0.325       5.00e-03
+## 2               Test   1  95   NaN   NaN  <NA> 0.00e+00
+## 3                Day   1  95 0.688 0.409       4.00e-03
+## 4     Condition:Test   1  95   Inf 0.000     * 6.87e-37
+## 5      Condition:Day   1  95 0.312 0.578       2.00e-03
+## 6           Test:Day   1  95   Inf 0.000     * 2.75e-36
+## 7 Condition:Test:Day   1  95   Inf 0.000     * 6.87e-37
+```
+
+```r
+x$'Sphericity Corrections'
+```
+
+```
+## NULL
+```
+
+```r
+# OUTLIERS
+summary(PVT$Diff)
+```
+
+```
+##      Min.   1st Qu.    Median      Mean   3rd Qu.      Max. 
+## -0.910595 -0.108391 -0.053066  0.020690 -0.001091 14.071161
+```
+
+```r
+outliers <- boxplot(PVT$Diff, plot=FALSE)$out
+# remove
+ PVT<- PVT[-which(PVT$Diff %in% outliers),]
+#visualise
+d<-melt(data.frame(PVT=c(PVT$Diff))) # we melt to wide format
+distribution_plot (d, 'Diff')
+```
+
+<img src="ALL_TOGETHER_files/figure-html/PVT_Differences-7.png"  />
+
+```r
+qqPlot(PVT$Diff)
+```
+
+<img src="ALL_TOGETHER_files/figure-html/PVT_Differences-8.png"  />
+
+```
+## [1]  55 233
+```
+
+```r
+res.aov2 <- aov(Diff ~ Condition * Day, data= PVT)
+# HOMOGENEITY OF VARIANCE
+plot(res.aov2, 1) # residuqls vs fits plot shows no evident relationship residuals and fitted values (Diffs of groups)
+```
+
+<img src="ALL_TOGETHER_files/figure-html/PVT_Differences-9.png"  />
+
+```r
+# NORMALITY
+aov_residuals <- residuals (object=res.aov2)
+shapiro.test(x=aov_residuals) 
+```
+
+```
+## 
+## 	Shapiro-Wilk normality test
+## 
+## data:  aov_residuals
+## W = 0.98878, p-value = 0.007709
+```
+
+```r
+#### repeated-measures ANOVA ####
+x<-anova_test(data= PVT, dv= Diff, wid= ID, between= Condition, within= c(Test, Day))
+get_anova_table(x)
+```
+
+```
+## ANOVA Table (type III tests)
+## 
+##               Effect DFn DFd     F     p p<.05      ges
+## 1          Condition   1  81 0.003 0.959       1.82e-05
+## 2               Test   1  81   Inf 0.000     * 5.89e-34
+## 3                Day   1  81 0.014 0.905       7.90e-05
+## 4     Condition:Test   1  81   NaN   NaN  <NA> 0.00e+00
+## 5      Condition:Day   1  81 1.490 0.226       8.00e-03
+## 6           Test:Day   1  81   NaN   NaN  <NA> 0.00e+00
+## 7 Condition:Test:Day   1  81   Inf 0.000     * 9.21e-36
+```
+
+```r
+#tukey's post-hoc analyses: see if performance decreased faster in HCL compared to LCL
+two_w <- lm(Diff ~ Test*Condition, data= PVT)
+emmeans1<- emmeans(two_w, pairwise ~ Test*Condition, adjust ="fdr", type = "response")
+emDiff_dataframe <- summary(emmeans1)$emmeans
+Anova(two_w, type='III')
+```
+
+```
+## Anova Table (Type III tests)
+## 
+## Response: Diff
+##                 Sum Sq  Df F value   Pr(>F)   
+## (Intercept)    0.04423   1  8.0383 0.004844 **
+## Test           0.00000   1  0.0000 1.000000   
+## Condition      0.00000   1  0.0004 0.984962   
+## Test:Condition 0.00000   1  0.0000 1.000000   
+## Residuals      1.93700 352                    
+## ---
+## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+```
+
+```r
+summary(emmeans1)
+```
+
+```
+## $emmeans
+##  Test Condition  emmean      SE  df lower.CL upper.CL
+##     1 HCL       -0.0504 0.00795 352  -0.0661  -0.0348
+##     2 HCL       -0.0504 0.00795 352  -0.0661  -0.0348
+##     1 LCL       -0.0509 0.00778 352  -0.0662  -0.0356
+##     2 LCL       -0.0509 0.00778 352  -0.0662  -0.0356
+## 
+## Confidence level used: 0.95 
+## 
+## $contrasts
+##  contrast      estimate     SE  df t.ratio p.value
+##  1 HCL - 2 HCL 0.000000 0.0112 352   0.000  1.0000
+##  1 HCL - 1 LCL 0.000469 0.0111 352   0.042  1.0000
+##  1 HCL - 2 LCL 0.000469 0.0111 352   0.042  1.0000
+##  2 HCL - 1 LCL 0.000469 0.0111 352   0.042  1.0000
+##  2 HCL - 2 LCL 0.000469 0.0111 352   0.042  1.0000
+##  1 LCL - 2 LCL 0.000000 0.0110 352   0.000  1.0000
+## 
+## P value adjustment: fdr method for 6 tests
+```
+
+```r
+#summary
+sum <- sum_3 (PVT, 'Test', 'Condition', 'Day', 'Diff')
+sum
+```
+
+```
+## # A tibble: 8 x 8
+## # Groups:   Test, Condition [4]
+##    Test Condition Day       n    mean     sd      se     ic
+##   <int> <fct>     <fct> <int>   <dbl>  <dbl>   <dbl>  <dbl>
+## 1     1 HCL       1        44 -0.0562 0.0672 0.0101  0.0204
+## 2     1 HCL       2        43 -0.0445 0.0608 0.00927 0.0187
+## 3     1 LCL       1        44 -0.0472 0.0794 0.0120  0.0241
+## 4     1 LCL       2        47 -0.0543 0.0865 0.0126  0.0254
+## 5     2 HCL       1        44 -0.0562 0.0672 0.0101  0.0204
+## 6     2 HCL       2        43 -0.0445 0.0608 0.00927 0.0187
+## 7     2 LCL       1        44 -0.0472 0.0794 0.0120  0.0241
+## 8     2 LCL       2        47 -0.0543 0.0865 0.0126  0.0254
+```
+
+```r
+## VISUALISATION
+# boxplot
+bxp <- ggboxplot(
+  PVT, x = "Condition", y = "Diff",
+  color = "Test", palette = "jco",
+  facet.by = "Day", short.panel.labs = FALSE
+  )
+bxp
+```
+
+<img src="ALL_TOGETHER_files/figure-html/PVT_Differences-10.png"  />
 --------------------------------------------------------------
 
 ## Subjective CF: VAS-f
@@ -331,7 +667,7 @@ leveneTest(Mean~ Time * Condition, data= VAS) # no homogeneity! problem!
 plot(res.aov2, 1) # residuqls vs fits plot shows no evident relationship residuals and fitted values (means of groups)
 ```
 
-![](ALL_TOGETHER_files/figure-html/VASf-1.png)<!-- -->
+<img src="ALL_TOGETHER_files/figure-html/VASf-1.png"  />
 
 ```r
 # NORMALITY
@@ -355,21 +691,21 @@ shapiro.test(x=aov_residuals) #
 plot(res.aov2, 2) #normal
 ```
 
-![](ALL_TOGETHER_files/figure-html/VASf-2.png)<!-- -->
+<img src="ALL_TOGETHER_files/figure-html/VASf-2.png"  />
 
 ```r
 ggqqplot(VAS, "Mean", ggtheme = theme_bw()) +
   facet_grid(Day ~ Condition)
 ```
 
-![](ALL_TOGETHER_files/figure-html/VASf-3.png)<!-- -->
+<img src="ALL_TOGETHER_files/figure-html/VASf-3.png"  />
 
 ```r
 ggqqplot(VAS, "Mean", ggtheme = theme_bw()) +
   facet_grid( ~Condition) #  very obviously NOT a normal distribution
 ```
 
-![](ALL_TOGETHER_files/figure-html/VASf-4.png)<!-- -->
+<img src="ALL_TOGETHER_files/figure-html/VASf-4.png"  />
 
 ```r
 # SPHERICITY: Mauchly's test
@@ -415,13 +751,13 @@ d<-melt(data.frame(VAS=c(VAS$Mean))) # we melt to wide format
 distribution_plot (d, 'Mean')
 ```
 
-![](ALL_TOGETHER_files/figure-html/VASf-5.png)<!-- -->
+<img src="ALL_TOGETHER_files/figure-html/VASf-5.png"  />
 
 ```r
 qqPlot(VAS$Mean) 
 ```
 
-![](ALL_TOGETHER_files/figure-html/VASf-6.png)<!-- -->
+<img src="ALL_TOGETHER_files/figure-html/VASf-6.png"  />
 
 ```
 ## [1] 213 310
@@ -474,7 +810,7 @@ tukey.test$Time
 
 ```r
 emmeans1<- emmeans(two_w, pairwise ~ Time*Condition, adjust ="fdr", type = "response")
-emmean_dataframe <- summary(emmeans1)$emmeans
+emmean_dataframe1 <- summary(emmeans1)$emmeans
 Anova(two_w, type='III')
 ```
 
@@ -653,6 +989,12 @@ bxp <- ggboxplot(
   color = "Time", palette = "jco",
   facet.by = "Day", short.panel.labs = FALSE
   )
+bxp
+```
+
+<img src="ALL_TOGETHER_files/figure-html/VASf-7.png"  />
+
+```r
 ## plot with error bars
 pl <- plotty(VAS, emmean_dataframe, 'Time', 'Mean', 'Condition', 'emmean', 'subj CF') +
  facet_grid(.~Day)+
@@ -661,7 +1003,7 @@ ggsave(pl, file=paste0(plotPrefix, "VAS_Plot.jpg"), width = 2500, height = 1500,
 pl
 ```
 
-![](ALL_TOGETHER_files/figure-html/VASf-7.png)<!-- -->
+<img src="ALL_TOGETHER_files/figure-html/VASf-8.png"  />
 
 ```r
 # 
@@ -849,7 +1191,7 @@ box_m(EXP[, 'Mean', drop=FALSE], EXP$Condition) # no homogeneity of variance
 plot(res.aov2, 1) # residuqls vs fits plot shows no evident relationship residuals and fitted values (means of groups)
 ```
 
-![](ALL_TOGETHER_files/figure-html/Performance-1.png)<!-- -->
+<img src="ALL_TOGETHER_files/figure-html/Performance-1.png"  />
 
 ```r
 ## NORMALITY
@@ -873,21 +1215,21 @@ shapiro.test(x=aov_residuals) # no normality!
 plot(res.aov2, 2) #clearly not normal
 ```
 
-![](ALL_TOGETHER_files/figure-html/Performance-2.png)<!-- -->
+<img src="ALL_TOGETHER_files/figure-html/Performance-2.png"  />
 
 ```r
 ggqqplot(EXP, "Mean", ggtheme = theme_bw()) +
   facet_grid(Time ~ Condition)
 ```
 
-![](ALL_TOGETHER_files/figure-html/Performance-3.png)<!-- -->
+<img src="ALL_TOGETHER_files/figure-html/Performance-3.png"  />
 
 ```r
 ggqqplot(EXP, "Mean", ggtheme = theme_bw()) +
   facet_grid( ~Condition) #  very obviously NOT a normal distribution
 ```
 
-![](ALL_TOGETHER_files/figure-html/Performance-4.png)<!-- -->
+<img src="ALL_TOGETHER_files/figure-html/Performance-4.png"  />
 
 ```r
 ## SPHERICITY: Mauchly's test
@@ -1047,7 +1389,7 @@ bxp <- ggboxplot(
 bxp
 ```
 
-![](ALL_TOGETHER_files/figure-html/Performance-5.png)<!-- -->
+<img src="ALL_TOGETHER_files/figure-html/Performance-5.png"  />
 
 ```r
 max_y<-max(EXP$Mean)
@@ -1060,7 +1402,7 @@ ggsave(pl, file=paste0(plotPrefix, "Acc_Cond_Time_Plot.jpg"), width = 2500, heig
 pl
 ```
 
-![](ALL_TOGETHER_files/figure-html/Performance-6.png)<!-- -->
+<img src="ALL_TOGETHER_files/figure-html/Performance-6.png"  />
 
 ```r
 ### CONDITION ###
@@ -1111,7 +1453,7 @@ bxp <- ggboxplot(
 bxp
 ```
 
-![](ALL_TOGETHER_files/figure-html/Performance-7.png)<!-- -->
+<img src="ALL_TOGETHER_files/figure-html/Performance-7.png"  />
 
 ```r
 #  plot
@@ -1120,7 +1462,7 @@ ggsave(pl, file=paste0(plotPrefix, "Acc_Cond_Plot.jpg"), width = 2500, height = 
 pl
 ```
 
-![](ALL_TOGETHER_files/figure-html/Performance-8.png)<!-- -->
+<img src="ALL_TOGETHER_files/figure-html/Performance-8.png"  />
 
 ```r
 ####  DAY 1 vs DAY 2 #####
@@ -1198,7 +1540,7 @@ ggsave(pl, file=paste0(plotPrefix, "Acc_Cond_Day_Plot.jpg"), width = 2500, heigh
 pl
 ```
 
-![](ALL_TOGETHER_files/figure-html/Performance-9.png)<!-- -->
+<img src="ALL_TOGETHER_files/figure-html/Performance-9.png"  />
 
 ```r
 ### Condition * Time * Day
@@ -1289,7 +1631,7 @@ ggsave(pl, file=paste0(plotPrefix, "Acc_Cond_Time_Plot.jpg"), width = 2500, heig
 pl
 ```
 
-![](ALL_TOGETHER_files/figure-html/Performance-10.png)<!-- -->
+<img src="ALL_TOGETHER_files/figure-html/Performance-10.png"  />
 
 ```r
 ### COMPONENTS (Color/Pic)####
@@ -1401,7 +1743,7 @@ ggsave(pl, file=paste0(plotPrefix, "EXP_Components_Plot.jpg"), width = 2500, hei
 pl
 ```
 
-![](ALL_TOGETHER_files/figure-html/Performance-11.png)<!-- -->
+<img src="ALL_TOGETHER_files/figure-html/Performance-11.png"  />
 
 ```r
 two_w <- glmer(Mean ~ Time * Stim + (1 | ID), weights = count,
@@ -1541,7 +1883,7 @@ pl <- plotti(EXP1, emmean_dataframe, 'Stim', 'Mean', 'Time', 'prob', 'Stimulus')
  VASfCORR
 ```
 
-![](ALL_TOGETHER_files/figure-html/unnamed-chunk-1-1.png)<!-- -->
+<img src="ALL_TOGETHER_files/figure-html/unnamed-chunk-1-1.png"  />
 
 ```r
  ### Accuracy ###
@@ -1589,6 +1931,6 @@ pl <- plotti(EXP1, emmean_dataframe, 'Stim', 'Mean', 'Time', 'prob', 'Stimulus')
  DELTACORR
 ```
 
-![](ALL_TOGETHER_files/figure-html/unnamed-chunk-1-2.png)<!-- -->
+<img src="ALL_TOGETHER_files/figure-html/unnamed-chunk-1-2.png"  />
 
 
