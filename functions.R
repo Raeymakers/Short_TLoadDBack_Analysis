@@ -140,11 +140,11 @@ two_way_plotf <- function(data, emmean_dataframe, var){
     )
       }
 
-one_w_plot <- function(data, Dataframe, xvar, yvar, Mean, title){
-  ggplot(EXP, aes(x=  .data[[xvar]], y = .data[[yvar]]))+
-    geom_flat_violin(aes(fill= .data[[xvar]]),position = position_nudge(x =.2, y = 0), alpha=.5, adjust = 1.5, colour = NA)+
-    geom_boxplot(aes(x =  .data[[xvar]], y =  .data[[yvar]], fill =  .data[[xvar]]), outlier.shape=NA, alpha= .45, width = .1, colour = "black") +
-    geom_point(data= Dataframe, aes(x = .data[[xvar]], y = .data[[Mean]], fill=.data[[xvar]]), position= position_dodge(0.1), size=4)+
+one_w_plot <- function(data, Dataframe, xvar, yvar, Mean_name, title){
+  ggplot()+
+    geom_flat_violin(data = data, aes(x= .data[[xvar]], y= .data[[yvar]], fill=.data[[xvar]]), position = position_nudge(x =.2, y = 0), alpha=.5, adjust = 1.5, colour = NA)+
+    geom_boxplot(data= data, aes( x =  .data[[xvar]], y =  .data[[yvar]], fill =  .data[[xvar]]), outlier.shape=NA, alpha= .45, width = .1, colour = "black") +
+    geom_point(data= Dataframe, aes(x = .data[[xvar]], y = .data[[Mean_name]], fill=.data[[xvar]]), position= position_dodge(0.1), size=4)+
     ggtitle(title)+
     theme(
       legend.text=element_text(size=13), # text legend bigger
@@ -161,9 +161,9 @@ plotti <- function(data, Dataframe, xvar, yvar, fillvar, Mean_name, title){
   ggplot()+ 
     geom_flat_violin(data= data, aes(x= .data[[xvar]], y= .data[[yvar]], fill=.data[[fillvar]]),position = position_nudge(x =.2, y = 0), alpha=.5, adjust = 1.5, colour = NA)+
     geom_boxplot(data= data, aes(x= .data[[xvar]], y= .data[[yvar]], fill=.data[[fillvar]]), outlier.shape=NA, alpha= .45, width = .1, colour = "black")+
-    geom_point(data= Dataframe, aes(x =.data[[xvar]], y = .data[[Mean]], fill=.data[[fillvar]]), position= position_dodge(0.1), size=4)+
-    geom_errorbar( data= Dataframe, aes(x=.data[[xvar]], ymin=.data[[Mean]]-SE, ymax=.data[[Mean_name]]+SE, fill=.data[[fillvar]]),position= position_dodge(0.3), width=0.1, colour="black", alpha=0.9) + #SD error bar
-    geom_errorbar(data= Dataframe, aes(x=.data[[xvar]], ymin=.data[[Mean_name]]-ic, ymax=.data[[Mean_name]]+ic, fill=.data[[fillvar]]), position= position_dodge(0.4), width=0.1, colour="red", alpha=0.9)+ #C.I.
+    geom_point(data= Dataframe, aes(x =.data[[xvar]], y = .data[[Mean_name]], fill=.data[[fillvar]]), position= position_dodge(0.1), size=4)+
+    geom_errorbar( data= Dataframe, aes(x=.data[[xvar]], ymin=.data[[Mean_name]]-SE, ymax=.data[[Mean_name]]+SE, fill=.data[[fillvar]]),position= position_dodge(0.3), width=0.1, colour="black", alpha=0.9) + #SD error bar
+    # geom_errorbar(data= Dataframe, aes(x=.data[[xvar]], ymin=.data[[Mean_name]]-ic, ymax=.data[[Mean_name]]+ic, fill=.data[[fillvar]]), position= position_dodge(0.4), width=0.1, colour="red", alpha=0.9)+ #C.I.
     scale_fill_manual(values = c("blue", 'red'))+ #labels names with amount
     ggtitle(title)+
     theme(
@@ -183,13 +183,11 @@ plotty <- function(data, Dataframe, xvar, yvar, fillvar, Mean_name, title){
     geom_boxplot(data= data, aes(x= .data[[xvar]], y= .data[[yvar]], fill=.data[[fillvar]]), outlier.shape=NA, alpha= .45, width = .1, colour = "black")+
     geom_point(data= Dataframe, aes(x =.data[[xvar]], y = .data[[Mean_name]], fill=.data[[fillvar]]), position= position_dodge(0.1), size=4)+
     geom_errorbar( data= Dataframe, aes(x=.data[[xvar]], ymin=.data[[Mean_name]]-SE, ymax=.data[[Mean_name]]+SE, fill=.data[[fillvar]]),position= position_dodge(0.3), width=0.1, colour="black", alpha=0.9) + #SD error bar
-    geom_errorbar(data= Dataframe, aes(x=.data[[xvar]], ymin=.data[[Mean_name]]-ic, ymax=.data[[Mean_name]]+ic, fill=.data[[fillvar]]), position= position_dodge(0.4), width=0.1, colour="red", alpha=0.9)+ #C.I.
+    # geom_errorbar(data= Dataframe, aes(x=.data[[xvar]], ymin=.data[[Mean_name]]-ic, ymax=.data[[Mean_name]]+ic, fill=.data[[fillvar]]), position= position_dodge(0.4), width=0.1, colour="red", alpha=0.9)+ #C.I.
     scale_fill_manual(values = c("blue", 'red'), #colours used in plot
-                      name='', #legend gets no name
-                      labels=c(
-                        paste0('HCL \n n=', as.character(length(unique(data$ID[data$Condition=='HCL'])))), 
-                        paste0('LCL \n n=', as.character(length(unique(data$ID[data$Condition=='LCL'])))) 
-                      ))+ #labels names with amount
+                      name=''#legend gets no name
+
+                      )+ #labels names with amount
     ggtitle(title)+
     theme(
       legend.text=element_text(size=13), # text legend bigger
