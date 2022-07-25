@@ -355,6 +355,7 @@ emmean_dataframe$n = my_sum$n
 emmean_dataframe$ic = my_sum$ic
 
 
+## CORR Acc score between two conditions (HCL and LCL)
+
 ```
 
-proportion correct

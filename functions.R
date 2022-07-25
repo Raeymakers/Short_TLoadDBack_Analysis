@@ -176,27 +176,26 @@ plotti <- function(data, Dataframe, xvar, yvar, fillvar, Mean_name, title){
 }
 
 plotty <- function(data, Dataframe, xvar, yvar, fillvar, Mean_name, title){
-  Dataframe$n= sum$n
-  Dataframe$ic = sum$ic
   ggplot()+ 
     geom_flat_violin(data= data, aes(x= .data[[xvar]], y= .data[[yvar]], fill=.data[[fillvar]]),position = position_nudge(x =.2, y = 0), alpha=.5, adjust = 1.5, colour = NA)+
     geom_boxplot(data= data, aes(x= .data[[xvar]], y= .data[[yvar]], fill=.data[[fillvar]]), outlier.shape=NA, alpha= .45, width = .1, colour = "black")+
     geom_point(data= Dataframe, aes(x =.data[[xvar]], y = .data[[Mean_name]], fill=.data[[fillvar]]), position= position_dodge(0.1), size=4)+
-    geom_errorbar( data= Dataframe, aes(x=.data[[xvar]], ymin=.data[[Mean_name]]-SE, ymax=.data[[Mean_name]]+SE, fill=.data[[fillvar]]),position= position_dodge(0.3), width=0.1, colour="black", alpha=0.9) + #SD error bar
-    # geom_errorbar(data= Dataframe, aes(x=.data[[xvar]], ymin=.data[[Mean_name]]-ic, ymax=.data[[Mean_name]]+ic, fill=.data[[fillvar]]), position= position_dodge(0.4), width=0.1, colour="red", alpha=0.9)+ #C.I.
-    scale_fill_manual(values = c("blue", 'red'), #colours used in plot
-                      name=''#legend gets no name
-
-                      )+ #labels names with amount
-    ggtitle(title)+
-    theme(
-      legend.text=element_text(size=13), # text legend bigger
-      panel.border = element_blank(), # no border panel (APA)
-      panel.background = element_blank(), #white simple background
-      axis.line = element_line(colour = "black"), # axis lines black
-      panel.grid.major.y = element_line( size=.1, color="#dedede") #slight grey horizontal lines
-    )
+  geom_errorbar( data= Dataframe, aes(x=.data[[xvar]], ymin=.data[[Mean_name]]-SE, ymax=.data[[Mean_name]]+SE, fill=.data[[fillvar]]),position= position_dodge(0.3), width=0.1, colour="black", alpha=0.9) + #SD error bar
+  scale_fill_manual(values = c("blue", 'red'), #colours used in plot
+                    name='')+
+  ggtitle(title)+
+  theme(
+    legend.text=element_text(size=13), # text legend bigger
+    panel.border = element_blank(), # no border panel (APA)
+    panel.background = element_blank(), #white simple background
+    axis.line = element_line(colour = "black"), # axis lines black
+    panel.grid.major.y = element_line( size=.1, color="#dedede") #slight grey horizontal lines
+   )
 }
+
+
+
+
 
 ### summary
 sum_3 <- function (data, var1, var2, var3, depvar){

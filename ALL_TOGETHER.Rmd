@@ -116,10 +116,10 @@ three_w <- lm(Mean ~ Time*Condition*Day, data= PVT)
 exp.av <- aov(three_w)
 summary(exp.av)# non sign so no post-hoc tests
 
-emmeans1<- emmeans(three_w, pairwise ~ Time*Condition*Day, adjust ="fdr")
+emmeans1<- emmeans(three_w, pairwise ~ Time*Condition*Day, adjust ="fdr", type='response')
 emmean_dataframe <- summary(emmeans1)$emmeans
 
-sum_2 (PVT, 'Day', 'Condition', 'Mean')
+sum_3 (PVT, 'Day', 'Condition', 'Time', 'Mean')
 
 ## VISUALISATION
 # boxplot 
@@ -131,9 +131,10 @@ ggboxplot(
 ## plot with error bars
 pl <- plotty(PVT, emmean_dataframe, 'Time', 'Mean', 'Condition', 'emmean', 'Vigilance') +
  facet_grid(.~Day)+
-scale_x_discrete(labels=c("Before", "After"))
+ scale_x_discrete(labels=c("Before", "After"))
 ggsave(pl, file=paste0(plotPrefix, "PVT_Plot.jpg"), width = 2500, height = 1500, dpi = 300, units = "px")
 pl
+
 ```
 --------------------------------------------------------------
 
@@ -189,10 +190,6 @@ qqPlot(VAS$Mean)
 three_w <- lm(Mean ~ Time*Condition*Day, data= VAS)
 exp.av <- aov(three_w)
 summary(exp.av)
-tukey.test <- TukeyHSD(exp.av)
-tukey.test$Time
-tukey.test$Day
-tukey.test$Condition
 
 pw2<- VAS %>%
   group_by (Condition)%>%
@@ -204,7 +201,7 @@ emmeans1<- emmeans(three_w, pairwise ~ Time*Condition*Day, adjust ="fdr", type =
 emmean_dataframe <- summary(emmeans1)$emmeans
 emmeans1
 
-sum_3 (VAS, 'Time', 'Condition', 'Day', 'Mean')
+sum <- sum_3 (VAS, 'Time', 'Condition', 'Day', 'Mean')
 
 ## VISUALISATION
 # boxplot 
@@ -214,11 +211,24 @@ ggboxplot(
   facet.by = "Day", short.panel.labs = FALSE)
 
 ## plot with error bars
-pl <- plotty(VAS, emmean_dataframe, 'Time', 'Mean', 'Condition', 'emmean', 'subj CF') +
+max_y<-max(VAS$Mean)
+pl <- plotty(VAS, emmean_dataframe, 'Time', 'Mean', 'Condition', 'emmean', 'VAS-f') +
  facet_grid(.~Day)+
 scale_x_discrete(labels=c("Before", "After"))
 ggsave(pl, file=paste0(plotPrefix, "VAS_Plot.jpg"), width = 2500, height = 1500, dpi = 300, units = "px")
 pl
+
+two_w <- lm(Mean ~ Time*Condition, data= VAS)
+emmeans1<- emmeans(three_w, pairwise ~ Time*Condition, adjust ="fdr", type = "response")
+emmean_dataframe <- summary(emmeans1)$emmeans
+emmeans1
+
+sum <- sum_2 (VAS, 'Time', 'Condition', 'Mean')
+pl <- plotty(VAS, emmean_dataframe, 'Condition', 'Mean', 'Time', 'emmean', 'VAS-f')+
+  scale_fill_manual(values = c("blue", 'red'), #colours used in plot
+                    name='', labels= c('before', 'after'))
+pl
+
 ```
 
 -----------------------------------------------------------------------------------
@@ -289,10 +299,6 @@ distribution_plot (d, 'Mean')
 three_w <- lm(Mean ~ Time*Condition*Day, data= EXP)
 exp.av <- aov(three_w)
 summary(exp.av)
-tukey.test <- TukeyHSD(exp.av)
-tukey.test$Time
-tukey.test$Day
-tukey.test$Condition
 
 pw2<- EXP %>%
   group_by (Condition)%>%
@@ -304,7 +310,7 @@ emmeans1<- emmeans(three_w, pairwise ~ Time*Condition*Day, adjust ="fdr", type =
 emmean_dataframe <- summary(emmeans1)$emmeans
 emmeans1
 
-sum_3 (EXP, 'Time', 'Condition', 'Day', 'Mean')
+sum<- sum_3 (EXP, 'Time', 'Condition', 'Day', 'Mean')
 
 ## VISUALISATION
 # boxplot 
@@ -314,7 +320,7 @@ ggboxplot(
   facet.by = "Day", short.panel.labs = FALSE)
 
 ## plot with error bars
-pl <- plotty(EXP, emmean_dataframe, 'Time', 'Mean', 'Condition', 'emmean', 'subj CF') +
+pl <- plotty(EXP, emmean_dataframe, 'Time', 'Mean', 'Condition', 'emmean', 'Performance') +
  facet_grid(.~Day)+
 scale_x_discrete(labels=c("Before", "After"))
 ggsave(pl, file=paste0(plotPrefix, "EXP_Plot.jpg"), width = 2500, height = 1500, dpi = 300, units = "px")
@@ -340,20 +346,26 @@ EXP1$Stim <- as.factor(EXP1$Stim)
 two_w <- lm(Mean ~ Time*Stim, data= EXP1)
 exp.av <- aov(two_w)
 summary(exp.av)
-tukey.test <- TukeyHSD(exp.av)
-tukey.test$Time
-tukey.test$Stim
-
+three_w <- lm(Mean~Time * Stim * Condition, data=EXP1)
 emmeans1<- emmeans(two_w, pairwise ~ Time*Stim, adjust ="fdr", type = "response")
 emmean_dataframe <- summary(emmeans1)$emmeans
 emmeans1
 
-sum_2 (EXP1, 'Stim', 'Condition', 'Mean')
+sum <- sum_2 (EXP1, 'Stim','Time', 'Mean')
 
-pl <- plotty(EXP1, emmean_dataframe, 'Time', 'Mean', 'Stim', 'emmean', 'subj CF') +
-scale_x_discrete(labels=c("Before", "After"))
+ggboxplot(
+  EXP1, x = "Time", y = "Mean",
+  color = "Stim", palette = "jco",
+   short.panel.labs = FALSE)
+
+pl <- plotty(EXP1, emmean_dataframe, 'Stim', 'Mean', 'Time', 'emmean', 'Components')+
+  scale_fill_manual(values = c("blue", 'red'), #colours used in plot
+                    name='', labels= c('before', 'after'))
 ggsave(pl, file=paste0(plotPrefix, "EXP_Plot.jpg"), width = 2500, height = 1500, dpi = 300, units = "px")
 pl
+
+
+
 ```
 
 

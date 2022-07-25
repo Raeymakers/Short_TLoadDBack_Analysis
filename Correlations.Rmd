@@ -53,4 +53,14 @@ VAS <- read.csv(paste0(Dir, "VAS.csv"), header = TRUE, sep = )
 #Download EXP data
 EXP <- read.csv(paste0(Dir, "EXP.csv"), header = TRUE, sep = )
 
+
+```
+
+```{r}
+### CORR VAS-f difference score between two conditions (HCL and LCL)
+
+
+## CORR Acc score between two conditions (HCL and LCL)
+
+
 ```
