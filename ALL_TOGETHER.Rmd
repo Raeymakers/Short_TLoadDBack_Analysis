@@ -18,7 +18,7 @@ knitr::opts_chunk$set(fig.pos = "!H", out.extra = "")
 ##### Set environment #####
 
 # Install packages
-list.of.packages <- c('tidyverse', 'effects', 'emmeans', 'data.table', 'dplyr', 'lme4', 'ggplot2', 'MuMIn', 'effsize', 'reshape2','cowplot', 'car', 'ggpubr', 'rstatix') # All relevant packages
+list.of.packages <- c('tidyverse', 'effects', 'emmeans', 'data.table', 'dplyr', 'lme4', 'ggplot2', 'MuMIn', 'effsize', 'reshape2','cowplot', 'car', 'ggpubr', 'rstatix', 'report') # All relevant packages
 new.packages <- list.of.packages[!(list.of.packages %in% installed.packages()[,"Package"])] # Check if any of these packages are not yet installed
 if(length(new.packages)) install.packages(new.packages) # If any packages are not yet installed, install them
 library(tidyverse)
@@ -35,6 +35,7 @@ library(cowplot)
 library(car)
 library(ggpubr)
 library(rstatix)
+library(report)
 
 # Get and declare functions
 setwd(dirname(rstudioapi::getActiveDocumentContext()$path))
@@ -90,12 +91,12 @@ PVT$Time <- as.factor(PVT$Time)
 
 ### CHECKING ASSUMPTIONS ####
 # Time x Condition 2-way ANOVA with interaction effect (what Borrogan did)
-res.aov2 <- aov(Mean ~ Condition * Day * Time, data= PVT)
+model <- aov(Mean ~ Condition * Day * Time, data= PVT)
 # HOMOGENEITY OF VARIANCE
-plot(res.aov2, 1) # residuqls vs fits plot shows no evident relationship residuals and fitted values (means of groups)
+plot(model, 1) # residuqls vs fits plot shows no evident relationship residuals and fitted values (means of groups)
 leveneTest(Mean~ Day * Condition, data= PVT) # nono sign
 # NORMALITY
-aov_residuals <- residuals (object=res.aov2)
+aov_residuals <- residuals (object=model)
 shapiro.test(x=aov_residuals) # sign, but OK: n>30
 ggqqplot(PVT, "Mean", ggtheme = theme_bw()) +
   facet_grid(Day ~ Condition) # clearly not normal
@@ -113,13 +114,14 @@ qqPlot(PVT$Mean) # much better
 
 ## ANALYSIS
 three_w <- lm(Mean ~ Time*Condition*Day, data= PVT)
-exp.av <- aov(three_w)
-summary(exp.av)# non sign so no post-hoc tests
+model <- aov(three_w)
+summary(model)# non sign so no post-hoc tests
+report(model)
 
 emmeans1<- emmeans(three_w, pairwise ~ Time*Condition*Day, adjust ="fdr", type='response')
 emmean_dataframe <- summary(emmeans1)$emmeans
 
-sum_3 (PVT, 'Day', 'Condition', 'Time', 'Mean')
+sum <- sum_3 (PVT, 'Day', 'Condition', 'Time', 'Mean')
 
 ## VISUALISATION
 # boxplot 
@@ -166,16 +168,16 @@ VAS$Time <- as.factor(VAS$Time)
 
 ### CHECKING ASSUMPTIONS ####
 # Time x Condition 2-way ANOVA with interaction effect (what Borrogan did)
-res.aov2 <- aov(Mean ~ Condition * Day, data= VAS)
-summary(res.aov2)# no sign! this is good, means vigilance was same in all conditions
+model <- aov(Mean ~ Condition * Day, data= VAS)
+summary(model)# no sign! this is good, means vigilance was same in all conditions
 # HOMOGENEITY OF VARIANCE
 leveneTest(Mean~ Time * Condition, data= VAS) # no homogeneity! problem! 
-plot(res.aov2, 1) # residuqls vs fits plot shows no evident relationship residuals and fitted values (means of groups)
+plot(model, 1) # residuqls vs fits plot shows no evident relationship residuals and fitted values (means of groups)
 # NORMALITY
-aov_residuals <- residuals (object=res.aov2)
+aov_residuals <- residuals (object=model)
 shapiro.test(x=aov_residuals) #  
 #visualisation
-plot(res.aov2, 2) #normal
+plot(model, 2) #normal
 ggqqplot(VAS, "Mean", ggtheme = theme_bw()) +
   facet_grid(Day ~ Condition)#  very obviously NOT a normal distribution
 # SPHERICITY: ok, bc all conditions 2 levels
@@ -188,8 +190,9 @@ qqPlot(VAS$Mean)
 
 #### repeated-measures ANOVA ####
 three_w <- lm(Mean ~ Time*Condition*Day, data= VAS)
-exp.av <- aov(three_w)
-summary(exp.av)
+model <- aov(three_w)
+summary(model)
+report(model)
 
 pw2<- VAS %>%
   group_by (Condition)%>%
@@ -277,15 +280,14 @@ EXP$ID <- as.factor(EXP$ID)
 
 ### CHECKING ASSUMPTIONS ####
 # Time x Condition 2-way ANOVA with interaction effect
-res.aov2 <- aov(Mean ~ Condition*Time, data= EXP)
-summary(res.aov2)
+model <- aov(Mean ~ Condition*Time, data= EXP)
 ## HOMOGENEITY OF VARIANCE
 leveneTest(Mean~ Time * Condition, data= EXP) # no homogeneity! problem! 
 box_m(EXP[, 'Mean', drop=FALSE], EXP$Condition) # no homogeneity of variance
-plot(res.aov2, 1) # residuqls vs fits plot shows no evident relationship residuals and fitted values (means of groups)
+plot(model, 1) # residuqls vs fits plot shows no evident relationship residuals and fitted values (means of groups)
 
 ## NORMALITY
-aov_residuals <- residuals (object=res.aov2)
+aov_residuals <- residuals (object=model)
 shapiro.test(x=aov_residuals) # no normality! 
 ggqqplot(EXP, "Mean", ggtheme = theme_bw()) +
   facet_grid(Time ~ Condition)#  very obviously NOT a normal distribution
@@ -297,14 +299,24 @@ distribution_plot (d, 'Mean')
 
 #### repeated-measures ANOVA ####
 three_w <- lm(Mean ~ Time*Condition*Day, data= EXP)
-exp.av <- aov(three_w)
-summary(exp.av)
+model <- aov(three_w)
+summary(model)
+report(model)
 
+sum_2(EXP, 'Time', 'Condition', 'Mean')
 pw2<- EXP %>%
   group_by (Condition)%>%
   pairwise_t_test(Mean~Time, paired=TRUE,
                   p.adjust.method='bonferroni')
 data.frame(pw2)
+
+sum_2(EXP, 'Time', 'Day', 'Mean')
+pw2<- EXP %>%
+  group_by (Day)%>%
+  pairwise_t_test(Mean~Time, paired=TRUE,
+                  p.adjust.method='bonferroni')
+data.frame(pw2)
+
 
 emmeans1<- emmeans(three_w, pairwise ~ Time*Condition*Day, adjust ="fdr", type = "response")
 emmean_dataframe <- summary(emmeans1)$emmeans
@@ -325,8 +337,10 @@ pl <- plotty(EXP, emmean_dataframe, 'Time', 'Mean', 'Condition', 'emmean', 'Perf
 scale_x_discrete(labels=c("Before", "After"))
 ggsave(pl, file=paste0(plotPrefix, "EXP_Plot.jpg"), width = 2500, height = 1500, dpi = 300, units = "px")
 pl
+```
 
-
+## COMPONENTS
+```{r Components, message=FALSE, warning = FALSE}
 ### COMPONENTS (Color/Pic)####
 
 # evolution over time for 2 components of the task
@@ -344,14 +358,16 @@ EXP1$Stim <- as.factor(EXP1$Stim)
 
 #### repeated-measures ANOVA ####
 two_w <- lm(Mean ~ Time*Stim, data= EXP1)
-exp.av <- aov(two_w)
-summary(exp.av)
+model <- aov(two_w)
+summary(model)
+report(model)
 three_w <- lm(Mean~Time * Stim * Condition, data=EXP1)
 emmeans1<- emmeans(two_w, pairwise ~ Time*Stim, adjust ="fdr", type = "response")
 emmean_dataframe <- summary(emmeans1)$emmeans
 emmeans1
 
 sum <- sum_2 (EXP1, 'Stim','Time', 'Mean')
+sum
 
 ggboxplot(
   EXP1, x = "Time", y = "Mean",
@@ -363,9 +379,6 @@ pl <- plotty(EXP1, emmean_dataframe, 'Stim', 'Mean', 'Time', 'emmean', 'Componen
                     name='', labels= c('before', 'after'))
 ggsave(pl, file=paste0(plotPrefix, "EXP_Plot.jpg"), width = 2500, height = 1500, dpi = 300, units = "px")
 pl
-
-
-
 ```
 
 
@@ -378,7 +391,6 @@ pl
   ### CORRELATIONS ###
 #########################################C
  
- VAS <- VAS[!(VAS$ID==49),] #remove ID 49
  names(VAS)[names(VAS)=="Mean"] <- "VASf"
  names(EXP)[names(EXP)=="Mean"] <- "Acc"
 
@@ -448,23 +460,23 @@ pl
 
  
 #HCL
- VAS_f <- df$VASf[df$Time==2 & df$Condition=='HCL' & df$Day==1] - df$VASf[df$Time==1 & df$Condition=='HCL' & df$Day==1]
+ VAS_f <- df$Mean[df$Time==2 & df$Condition=='HCL' & df$Day==1] - df$Mean[df$Time==1 & df$Condition=='HCL' & df$Day==1]
  ACC<- df$Acc[df$Time==2 & df$Condition=='HCL' & df$Day==1] - df$Acc[df$Time==1 & df$Condition=='HCL' & df$Day==1]
  DELTAHCL_1<- corrplot(VAS_f, ACC, 'VASf delta', 'Performance delta') +ggtitle('delta correlations HCL Day 1') # no correlation: change before-after test in VASf no correlation with obj CF changes
  #LCL
- VAS_f <- df$VASf[df$Time==2 & df$Condition=='LCL' & df$Day==1] - df$VASf[df$Time==1 & df$Condition=='LCL' & df$Day==1]
+ VAS_f <- df$Mean[df$Time==2 & df$Condition=='LCL' & df$Day==1] - df$Mean[df$Time==1 & df$Condition=='LCL' & df$Day==1]
  ACC<- df$Acc[df$Time==2 & df$Condition=='LCL' & df$Day==1] - df$Acc[df$Time==1 & df$Condition=='LCL' & df$Day==1]
  DELTALCL_1<- corrplot(VAS_f, ACC, 'VASf delta', 'Performance delta') +ggtitle('delta correlations LCL Day 1')
  
-  VAS_f <- df$VASf[df$Time==2 & df$Condition=='HCL' & df$Day==2] - df$VASf[df$Time==1 & df$Condition=='HCL' & df$Day==2]
+  VAS_f <- df$Mean[df$Time==2 & df$Condition=='HCL' & df$Day==2] - df$Mean[df$Time==1 & df$Condition=='HCL' & df$Day==2]
  ACC<- df$Acc[df$Time==2 & df$Condition=='HCL' & df$Day==2] - df$Acc[df$Time==1 & df$Condition=='HCL' & df$Day==2]
  DELTAHCL_2<- corrplot(VAS_f, ACC, 'VASf delta', 'Performance delta') +ggtitle('delta correlations HCL Day 2') # no correlation: change before-after test in VASf no correlation with obj CF changes
  #LCL
- VAS_f <- df$VASf[df$Time==2 & df$Condition=='LCL' & df$Day==2] - df$VASf[df$Time==1 & df$Condition=='LCL']
- ACC<- df$Acc[df$Time==2 & df$Condition=='LCL' & df$Day==2] - df$Acc[df$Time==1 & df$Condition=='LCL']
+ VAS_f <- df$Mean[df$Time==2 & df$Condition=='LCL' & df$Day==2] - df$Mean[df$Time==1 & df$Condition=='LCL' & df$Day==2]
+ ACC<- df$Acc[df$Time==2 & df$Condition=='LCL' & df$Day==2] - df$Acc[df$Time==1 & df$Condition=='LCL' & df$Day==2]
  DELTALCL_2<- corrplot(VAS_f, ACC, 'VASf delta', 'Performance delta') +ggtitle('delta correlations LCL Day 2')
  
-DELTACORR <- ggarrange(DELTAHCL_1, DELTALCL_1, DELTAHCL_1, DELTALCL_2 + rremove("x.text"),
+DELTACORR <- ggarrange(DELTAHCL_1, DELTALCL_1, DELTAHCL_2, DELTALCL_2 + rremove("x.text"),
            labels = c("A", "B", "C", "D"),
            ncol = 2, nrow = 2)
  ggsave(DELTACORR, file=paste0(plotPrefix, "DELTACORR.jpg"), width = 2500, height = 1500, dpi = 300, units = "px")
