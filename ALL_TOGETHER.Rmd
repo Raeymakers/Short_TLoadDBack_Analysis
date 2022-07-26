@@ -348,13 +348,19 @@ pl
 EXP1 <- as.data.frame (group_by(data, Condition, Day, Time, ID, Stim) %>%
   summarise(
     count = n(),
-    Mean = mean(prop_correct, na.rm = TRUE) ))
+    Mean = mean(accuracy, na.rm = TRUE) ))
 # set factors
 EXP1$Time <- as.factor(EXP1$Time)
 EXP1$Condition <- as.factor(EXP1$Condition)
 EXP1$Day <- as.factor(EXP1$Day)
 EXP1$ID <- as.factor(EXP1$ID)
 EXP1$Stim <- as.factor(EXP1$Stim)
+
+### CHECKING ASSUMPTIONS ####
+# Time x Condition 2-way ANOVA with interaction effect
+model <- aov(Mean ~ Condition*Time, data= EXP1)
+## HOMOGENEITY OF VARIANCE
+leveneTest(Mean~ Time * Condition, data= EXP1) 
 
 #### repeated-measures ANOVA ####
 two_w <- lm(Mean ~ Time*Stim, data= EXP1)
@@ -374,9 +380,7 @@ ggboxplot(
   color = "Stim", palette = "jco",
    short.panel.labs = FALSE)
 
-pl <- plotty(EXP1, emmean_dataframe, 'Stim', 'Mean', 'Time', 'emmean', 'Components')+
-  scale_fill_manual(values = c("blue", 'red'), #colours used in plot
-                    name='', labels= c('before', 'after'))
+pl <- plotty(EXP1, emmean_dataframe, 'Time', 'Mean', 'Stim', 'emmean', 'Components')
 ggsave(pl, file=paste0(plotPrefix, "EXP_Plot.jpg"), width = 2500, height = 1500, dpi = 300, units = "px")
 pl
 ```
@@ -460,19 +464,19 @@ pl
 
  
 #HCL
- VAS_f <- df$Mean[df$Time==2 & df$Condition=='HCL' & df$Day==1] - df$Mean[df$Time==1 & df$Condition=='HCL' & df$Day==1]
+ VAS_f <- df$VASf[df$Time==2 & df$Condition=='HCL' & df$Day==1] - df$VASf[df$Time==1 & df$Condition=='HCL' & df$Day==1]
  ACC<- df$Acc[df$Time==2 & df$Condition=='HCL' & df$Day==1] - df$Acc[df$Time==1 & df$Condition=='HCL' & df$Day==1]
  DELTAHCL_1<- corrplot(VAS_f, ACC, 'VASf delta', 'Performance delta') +ggtitle('delta correlations HCL Day 1') # no correlation: change before-after test in VASf no correlation with obj CF changes
  #LCL
- VAS_f <- df$Mean[df$Time==2 & df$Condition=='LCL' & df$Day==1] - df$Mean[df$Time==1 & df$Condition=='LCL' & df$Day==1]
+ VAS_f <- df$VASf[df$Time==2 & df$Condition=='LCL' & df$Day==1] - df$VASf[df$Time==1 & df$Condition=='LCL' & df$Day==1]
  ACC<- df$Acc[df$Time==2 & df$Condition=='LCL' & df$Day==1] - df$Acc[df$Time==1 & df$Condition=='LCL' & df$Day==1]
  DELTALCL_1<- corrplot(VAS_f, ACC, 'VASf delta', 'Performance delta') +ggtitle('delta correlations LCL Day 1')
  
-  VAS_f <- df$Mean[df$Time==2 & df$Condition=='HCL' & df$Day==2] - df$Mean[df$Time==1 & df$Condition=='HCL' & df$Day==2]
+  VAS_f <- df$VASf[df$Time==2 & df$Condition=='HCL' & df$Day==2] - df$VASf[df$Time==1 & df$Condition=='HCL' & df$Day==2]
  ACC<- df$Acc[df$Time==2 & df$Condition=='HCL' & df$Day==2] - df$Acc[df$Time==1 & df$Condition=='HCL' & df$Day==2]
  DELTAHCL_2<- corrplot(VAS_f, ACC, 'VASf delta', 'Performance delta') +ggtitle('delta correlations HCL Day 2') # no correlation: change before-after test in VASf no correlation with obj CF changes
  #LCL
- VAS_f <- df$Mean[df$Time==2 & df$Condition=='LCL' & df$Day==2] - df$Mean[df$Time==1 & df$Condition=='LCL' & df$Day==2]
+ VAS_f <- df$VASf[df$Time==2 & df$Condition=='LCL' & df$Day==2] - df$VASf[df$Time==1 & df$Condition=='LCL' & df$Day==2]
  ACC<- df$Acc[df$Time==2 & df$Condition=='LCL' & df$Day==2] - df$Acc[df$Time==1 & df$Condition=='LCL' & df$Day==2]
  DELTALCL_2<- corrplot(VAS_f, ACC, 'VASf delta', 'Performance delta') +ggtitle('delta correlations LCL Day 2')
  
