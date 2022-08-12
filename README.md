@@ -1,4 +1,4 @@
-# Short_DLoadDBack
+# Short_TLoadDBack
 analysis of the effeciency of the shortened DLoadDback in tiring participants
 
 This study uses the TLoadDback paradigm to manipulate Cognitive Fatigue (CF) between participants.
