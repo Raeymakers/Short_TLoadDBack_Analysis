@@ -252,7 +252,7 @@ corrplot <- function (xvar, yvar, xlab, ylab){
   dataframe <- data.frame(xvar, yvar)
   ggscatter(dataframe, x = 'xvar', y= 'yvar',
             add='reg.line', fullrange=TRUE,
-            conf.int=TRUE,
+            conf.int=TRUE, size= .1,
             cor.coef=TRUE, cor.method='pearson')+
     xlab(toString(xlab))+
     ylab(toString(ylab))

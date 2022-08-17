@@ -79,61 +79,72 @@ data$RT <- 1/(data$RT/1000) # mean 1/RT
 PVT <- as.data.frame(group_by(data, Test, Day, Condition, ID) %>%
   summarise(
     count = n(),
-    Mean = mean(RT, na.rm = TRUE)))
+    Vigilance = mean(RT, na.rm = TRUE)))
 PVT <- PVT[!(PVT$ID==49),] # to make both conditions even amount of participants
 
 # make factors
 PVT$Day <- factor(PVT$Day)
 PVT$ID <- factor(PVT$ID)
 PVT$Condition <- factor(PVT$Condition)
-names(PVT)[names(PVT)=="Test"] <- "Time"
-PVT$Time <- as.factor(PVT$Time)
+names(PVT)[names(PVT)=="Test"] <- "Session"
+PVT$Session <- as.factor(PVT$Session)
 
 ### CHECKING ASSUMPTIONS ####
-# Time x Condition 2-way ANOVA with interaction effect (what Borrogan did)
-model <- aov(Mean ~ Condition * Day * Time, data= PVT)
+# Session x Condition 2-way ANOVA with interaction effect (what Borrogan did)
+model <- aov(Vigilance ~ Condition * Day * Session, data= PVT)
 # HOMOGENEITY OF VARIANCE
-plot(model, 1) # residuqls vs fits plot shows no evident relationship residuals and fitted values (means of groups)
-leveneTest(Mean~ Day * Condition, data= PVT) # nono sign
+plot(model, 1) # residuqls vs fits plot shows no evident relationship residuals and fitted values (Vigilances of groups)
+leveneTest(Vigilance~ Day * Condition, data= PVT) # nono sign
 # NORMALITY
 aov_residuals <- residuals (object=model)
 shapiro.test(x=aov_residuals) # sign, but OK: n>30
-ggqqplot(PVT, "Mean", ggtheme = theme_bw()) +
+ggqqplot(PVT, "Vigilance", ggtheme = theme_bw()) +
   facet_grid(Day ~ Condition) # clearly not normal
 
-# OUTLIERS
-summary(PVT$Mean)
-outliers <- boxplot(PVT$Mean, plot=FALSE)$out
-# remove 
-PVT<- PVT[-which(PVT$Mean %in% outliers),]# Result the SAME for data with or without outliers: because it is glmer
-# but removing the outliers makes visualisations much more readable
-d<-melt(data.frame(RT=c(PVT$Mean))) # we melt to wide format
-distribution_plot (d, 'Mean') # much better
-qqPlot(PVT$Mean) # much better
 
 
 ## ANALYSIS
-three_w <- lm(Mean ~ Time*Condition*Day, data= PVT)
+three_w <- lm(Vigilance ~ Session*Condition*Day, data= PVT)
 model <- aov(three_w)
 summary(model)# non sign so no post-hoc tests
 report(model)
 
-emmeans1<- emmeans(three_w, pairwise ~ Time*Condition*Day, adjust ="fdr", type='response')
+d<-melt(data.frame(RT=c(PVT$Vigilance))) # we melt to wide format
+distribution_plot (d, 'Vigilance') # much better
+qqPlot(PVT$Vigilance) # much better
+
+
+
+
+
+# OUTLIERS
+summary(PVT$Vigilance)
+outliers <- boxplot(PVT$Vigilance, plot=FALSE)$out
+# remove 
+PVT<- PVT[-which(PVT$Vigilance %in% outliers),]# Result the SAME for data with or without outliers: because it is glmer
+# but removing the outliers makes visualisations much more readable
+three_w <- lm(Vigilance ~ Session*Condition*Day, data= PVT)
+emVigilances1<- emmeans(three_w, pairwise ~ Session*Condition*Day, adjust ="fdr", type='response')
 emmean_dataframe <- summary(emmeans1)$emmeans
 
-sum <- sum_3 (PVT, 'Day', 'Condition', 'Time', 'Mean')
+sum <- sum_3 (PVT, 'Day', 'Condition', 'Session', 'Vigilance')
 
 ## VISUALISATION
 # boxplot 
 ggboxplot(
-  PVT, x = "Condition", y = "Mean",
-  color = "Time", palette = "jco",
+  PVT, x = "Condition", y = "Vigilance",
+  color = "Session", palette = "jco",
   facet.by = "Day", short.panel.labs = FALSE)
 
+
+
+Day.labs <- c("Day 1", "Day 2")
+names(Day.labs) <- c("1", "2")
+
 ## plot with error bars
-pl <- plotty(PVT, emmean_dataframe, 'Time', 'Mean', 'Condition', 'emmean', 'Vigilance') +
- facet_grid(.~Day)+
- scale_x_discrete(labels=c("Before", "After"))
+pl <- plotty(PVT, emmean_dataframe, 'Session', 'Vigilance', 'Condition', 'emmean', 'Vigilance') +
+ facet_grid(.~Day, labeller = labeller(Day=Day.labs))+
+ scale_x_discrete(labels=c("Session 1", "Session 2"))
 ggsave(pl, file=paste0(plotPrefix, "PVT_Plot.jpg"), width = 2500, height = 1500, dpi = 300, units = "px")
 pl
 
@@ -163,15 +174,15 @@ VAS <- as.data.frame(group_by(data, Test, Day, Condition, ID) %>%
 VAS$Day <- as.factor(VAS$Day)
 VAS$Condition <- as.factor(VAS$Condition)
 VAS$ID <- as.factor(VAS$ID)
-names(VAS)[names(VAS)=="Test"] <- "Time"
-VAS$Time <- as.factor(VAS$Time)
+names(VAS)[names(VAS)=="Test"] <- "Session"
+VAS$Session <- as.factor(VAS$Session)
 
 ### CHECKING ASSUMPTIONS ####
-# Time x Condition 2-way ANOVA with interaction effect (what Borrogan did)
+# Session x Condition 2-way ANOVA with interaction effect (what Borrogan did)
 model <- aov(Mean ~ Condition * Day, data= VAS)
 summary(model)# no sign! this is good, means vigilance was same in all conditions
 # HOMOGENEITY OF VARIANCE
-leveneTest(Mean~ Time * Condition, data= VAS) # no homogeneity! problem! 
+leveneTest(Mean~ Session * Condition, data= VAS) # no homogeneity! problem! 
 plot(model, 1) # residuqls vs fits plot shows no evident relationship residuals and fitted values (means of groups)
 # NORMALITY
 aov_residuals <- residuals (object=model)
@@ -189,47 +200,51 @@ qqPlot(VAS$Mean)
 
 
 #### repeated-measures ANOVA ####
-three_w <- lm(Mean ~ Time*Condition*Day, data= VAS)
+three_w <- lm(Mean ~ Session*Condition*Day, data= VAS)
 model <- aov(three_w)
 summary(model)
 report(model)
 
 pw2<- VAS %>%
   group_by (Condition)%>%
-  pairwise_t_test(Mean~Time, paired=TRUE,
+  pairwise_t_test(Mean~Session, paired=TRUE,
                   p.adjust.method='bonferroni')
 data.frame(pw2)
 
-emmeans1<- emmeans(three_w, pairwise ~ Time*Condition*Day, adjust ="fdr", type = "response")
+emmeans1<- emmeans(three_w, pairwise ~ Session*Condition*Day, adjust ="fdr", type = "response")
 emmean_dataframe <- summary(emmeans1)$emmeans
 emmeans1
 
-sum <- sum_3 (VAS, 'Time', 'Condition', 'Day', 'Mean')
+sum <- sum_3 (VAS, 'Session', 'Condition', 'Day', 'Mean')
 
 ## VISUALISATION
 # boxplot 
 ggboxplot(
   VAS, x = "Condition", y = "Mean",
-  color = "Time", palette = "jco",
+  color = "Session", palette = "jco",
   facet.by = "Day", short.panel.labs = FALSE)
 
 ## plot with error bars
 max_y<-max(VAS$Mean)
-pl <- plotty(VAS, emmean_dataframe, 'Time', 'Mean', 'Condition', 'emmean', 'VAS-f') +
- facet_grid(.~Day)+
-scale_x_discrete(labels=c("Before", "After"))
+Day.labs <- c("Day 1", "Day 2")
+names(Day.labs) <- c("1", "2")
+pl <- plotty(VAS, emmean_dataframe, 'Session', 'Mean', 'Condition', 'emmean', 'VAS-f') +
+ facet_grid(.~Day, labeller = labeller(Day=Day.labs))+
+scale_x_discrete(labels=c("Session 1", "Session 2"))+
+  ylab("Subjective CF")
 ggsave(pl, file=paste0(plotPrefix, "VAS_Plot.jpg"), width = 2500, height = 1500, dpi = 300, units = "px")
 pl
 
-two_w <- lm(Mean ~ Time*Condition, data= VAS)
-emmeans1<- emmeans(three_w, pairwise ~ Time*Condition, adjust ="fdr", type = "response")
+two_w <- lm(Mean ~ Session*Condition, data= VAS)
+emmeans1<- emmeans(three_w, pairwise ~ Session*Condition, adjust ="fdr", type = "response")
 emmean_dataframe <- summary(emmeans1)$emmeans
 emmeans1
 
-sum <- sum_2 (VAS, 'Time', 'Condition', 'Mean')
-pl <- plotty(VAS, emmean_dataframe, 'Condition', 'Mean', 'Time', 'emmean', 'VAS-f')+
+sum <- sum_2 (VAS, 'Session', 'Condition', 'Mean')
+pl <- plotty(VAS, emmean_dataframe, 'Condition', 'Mean', 'Session', 'emmean', 'VAS-f')+
   scale_fill_manual(values = c("blue", 'red'), #colours used in plot
-                    name='', labels= c('before', 'after'))
+                    name='', labels= c('Session 1', 'Session 2'))+
+  ylab("Subjective CF")
 pl
 
 ```
@@ -303,14 +318,15 @@ model <- aov(three_w)
 summary(model)
 report(model)
 
-sum_2(EXP, 'Time', 'Condition', 'Mean')
-pw2<- EXP %>%
-  group_by (Condition)%>%
-  pairwise_t_test(Mean~Time, paired=TRUE,
-                  p.adjust.method='bonferroni')
-data.frame(pw2)
+# sum_2(EXP, 'Time', 'Condition', 'Mean')
+# pw2<- EXP %>%
+#   group_by (Condition)%>%
+#   pairwise_t_test(Mean~Time, paired=TRUE,
+#                   p.adjust.method='bonferroni')
+# data.frame(pw2)
 
 sum_2(EXP, 'Time', 'Day', 'Mean')
+sum_3(EXP, 'Time', 'Condition', 'Day', 'Mean')
 pw2<- EXP %>%
   group_by (Day)%>%
   pairwise_t_test(Mean~Time, paired=TRUE,
@@ -332,9 +348,12 @@ ggboxplot(
   facet.by = "Day", short.panel.labs = FALSE)
 
 ## plot with error bars
+Day.labs <- c("Day 1", "Day 2")
+names(Day.labs) <- c("1", "2")
 pl <- plotty(EXP, emmean_dataframe, 'Time', 'Mean', 'Condition', 'emmean', 'Performance') +
- facet_grid(.~Day)+
-scale_x_discrete(labels=c("Before", "After"))
+ facet_grid(.~Day, labeller = labeller(Day=Day.labs))+
+scale_x_discrete(labels=c("T 1", "T 2"))+
+  ylab("Performance")
 ggsave(pl, file=paste0(plotPrefix, "EXP_Plot.jpg"), width = 2500, height = 1500, dpi = 300, units = "px")
 pl
 ```
@@ -356,12 +375,6 @@ EXP1$Day <- as.factor(EXP1$Day)
 EXP1$ID <- as.factor(EXP1$ID)
 EXP1$Stim <- as.factor(EXP1$Stim)
 
-### CHECKING ASSUMPTIONS ####
-# Time x Condition 2-way ANOVA with interaction effect
-model <- aov(Mean ~ Condition*Time, data= EXP1)
-## HOMOGENEITY OF VARIANCE
-leveneTest(Mean~ Time * Condition, data= EXP1) 
-
 #### repeated-measures ANOVA ####
 two_w <- lm(Mean ~ Time*Stim, data= EXP1)
 model <- aov(two_w)
@@ -372,6 +385,12 @@ emmeans1<- emmeans(two_w, pairwise ~ Time*Stim, adjust ="fdr", type = "response"
 emmean_dataframe <- summary(emmeans1)$emmeans
 emmeans1
 
+pw2<- EXP1 %>%
+  group_by (Time)%>%
+  pairwise_t_test(Mean~Stim, paired=TRUE,
+                  p.adjust.method='bonferroni')
+data.frame(pw2)
+
 sum <- sum_2 (EXP1, 'Stim','Time', 'Mean')
 sum
 
@@ -380,7 +399,9 @@ ggboxplot(
   color = "Stim", palette = "jco",
    short.panel.labs = FALSE)
 
-pl <- plotty(EXP1, emmean_dataframe, 'Time', 'Mean', 'Stim', 'emmean', 'Components')
+pl <- plotty(EXP1, emmean_dataframe, 'Time', 'Mean', 'Stim', 'emmean', 'Components')+
+  ylab("Performance")+
+scale_x_discrete(labels=c("T 1", "T 2"))
 ggsave(pl, file=paste0(plotPrefix, "EXP_Plot.jpg"), width = 2500, height = 1500, dpi = 300, units = "px")
 pl
 ```
@@ -428,16 +449,23 @@ pl
  ggsave(VASfCORR, file=paste0(plotPrefix, "VASf_CORR.jpg"), width = 2500, height = 1500, dpi = 300, units = "px")
  VASfCORR
 
+ 
+  VAS <- VAS[!(VAS$ID==49),]
+VASfHCL <- VAS$VASf[ VAS$Condition=='HCL']
+ VASfLCL <- VAS$VASf[ VAS$Condition=='LCL']
+ VASf_COND <- corrplot(VAS$VASf[ VAS$Condition=='HCL'], VASfLCL, 'HCL', 'LCL') +ggtitle('VASf Conditions')
+ 
+ 
  ### Accuracy ###
 
  ## CORR Accuracy Day 1 and Day 2  (test-retest reliability)
  #HCL
- Day1 <- EXP$Acc[EXP$Day==1 & EXP$Condition=='HCL' & EXP$Time==2]- EXP$Acc[EXP$Day==1 & EXP$Condition=='HCL' & EXP$Time==1]
- Day2 <- EXP$Acc[EXP$Day==2 & EXP$Condition=='HCL' & EXP$Time==2]- EXP$Acc[EXP$Day==2 & EXP$Condition=='HCL' & EXP$Time==1]
+ Day1 <- EXP$Acc[EXP$Day==1 & EXP$Condition=='HCL' ]
+ Day2 <- EXP$Acc[EXP$Day==2 & EXP$Condition=='HCL']
  EXPHCL<-corrplot(Day1, Day2, 'Day1', 'Day2') +ggtitle('Performance HCL')
  #LCL
- Day1 <- EXP$Acc[EXP$Day==1 & EXP$Condition=='LCL' & EXP$Time==2]- EXP$Acc[EXP$Day==1 & EXP$Condition=='LCL' & EXP$Time==1]
- Day2 <- EXP$Acc[EXP$Day==2 & EXP$Condition=='LCL' & EXP$Time==2]- EXP$Acc[EXP$Day==2 & EXP$Condition=='LCL' & EXP$Time==1]
+ Day1 <- EXP$Acc[EXP$Day==1 & EXP$Condition=='LCL' ]
+ Day2 <- EXP$Acc[EXP$Day==2 & EXP$Condition=='LCL' ]
  EXPLCL<-corrplot(Day1, Day2, 'Day1', 'Day2') +ggtitle('Performance LCL')
 
  ## CORR Accuracy delta between Day 1 and Day 2
@@ -456,6 +484,8 @@ pl
  ggsave(EXPCORR, file=paste0(plotPrefix, "EXP_CORR.jpg"), width = 2500, height = 1500, dpi = 300, units = "px")
  EXPCORR
 
+ 
+
   # Create 1 big dataframe
   df <- merge(VAS, EXP, by = c('Day','Time', 'Condition', 'ID'))
 
@@ -464,27 +494,86 @@ pl
 
  
 #HCL
- VAS_f <- df$VASf[df$Time==2 & df$Condition=='HCL' & df$Day==1] - df$VASf[df$Time==1 & df$Condition=='HCL' & df$Day==1]
- ACC<- df$Acc[df$Time==2 & df$Condition=='HCL' & df$Day==1] - df$Acc[df$Time==1 & df$Condition=='HCL' & df$Day==1]
- DELTAHCL_1<- corrplot(VAS_f, ACC, 'VASf delta', 'Performance delta') +ggtitle('delta correlations HCL Day 1') # no correlation: change before-after test in VASf no correlation with obj CF changes
+ VAS_f <- df$VASf[df$Time==1 & df$Day==1]
+ ACC<- df$Acc[df$Time==1 & df$Day==1]
+ DELTAHCL_1<- corrplot(VAS_f, ACC, 'VASf', 'Performance') +ggtitle('Time 1, Day 1') # no correlation: change before-after test in VASf no correlation with obj CF changes
  #LCL
- VAS_f <- df$VASf[df$Time==2 & df$Condition=='LCL' & df$Day==1] - df$VASf[df$Time==1 & df$Condition=='LCL' & df$Day==1]
- ACC<- df$Acc[df$Time==2 & df$Condition=='LCL' & df$Day==1] - df$Acc[df$Time==1 & df$Condition=='LCL' & df$Day==1]
- DELTALCL_1<- corrplot(VAS_f, ACC, 'VASf delta', 'Performance delta') +ggtitle('delta correlations LCL Day 1')
+ VAS_f <- df$VASf[df$Time==2 & df$Day==1] 
+ ACC<- df$Acc[df$Time==2  & df$Day==1] 
+ DELTALCL_1<- corrplot(VAS_f, ACC, 'VASf', 'Performance') +ggtitle('Time 2, Day 1')
  
-  VAS_f <- df$VASf[df$Time==2 & df$Condition=='HCL' & df$Day==2] - df$VASf[df$Time==1 & df$Condition=='HCL' & df$Day==2]
- ACC<- df$Acc[df$Time==2 & df$Condition=='HCL' & df$Day==2] - df$Acc[df$Time==1 & df$Condition=='HCL' & df$Day==2]
- DELTAHCL_2<- corrplot(VAS_f, ACC, 'VASf delta', 'Performance delta') +ggtitle('delta correlations HCL Day 2') # no correlation: change before-after test in VASf no correlation with obj CF changes
+  VAS_f <- df$VASf[df$Time==1 & df$Day==2]
+ ACC<- df$Acc[df$Time==1 & df$Day==2]
+ DELTAHCL_2<- corrplot(VAS_f, ACC, 'VASf', 'Performance') +ggtitle('Time 1, Day 2') # no correlation: change before-after test in VASf no correlation with obj CF changes
  #LCL
- VAS_f <- df$VASf[df$Time==2 & df$Condition=='LCL' & df$Day==2] - df$VASf[df$Time==1 & df$Condition=='LCL' & df$Day==2]
- ACC<- df$Acc[df$Time==2 & df$Condition=='LCL' & df$Day==2] - df$Acc[df$Time==1 & df$Condition=='LCL' & df$Day==2]
- DELTALCL_2<- corrplot(VAS_f, ACC, 'VASf delta', 'Performance delta') +ggtitle('delta correlations LCL Day 2')
+ VAS_f <-  df$VASf[df$Time==1  & df$Day==2]
+ ACC<-  df$Acc[df$Time==1 &  df$Day==2]
+ DELTALCL_2<- corrplot(VAS_f, ACC, 'VASf', 'Performance') +ggtitle('Time 1, Day 2')
  
 DELTACORR <- ggarrange(DELTAHCL_1, DELTALCL_1, DELTAHCL_2, DELTALCL_2 + rremove("x.text"),
            labels = c("A", "B", "C", "D"),
            ncol = 2, nrow = 2)
  ggsave(DELTACORR, file=paste0(plotPrefix, "DELTACORR.jpg"), width = 2500, height = 1500, dpi = 300, units = "px")
  DELTACORR 
+ 
+ 
+ 
+ ###### #VAS-f delta score corr per time per condition
+ 
+ # delta VAS-f: increase in score (2-1) in HCL condition with increase in score (2-1) Performance 
+ 
+  #HCL, Day 1
+VAS_f <- VAS$VASf[VAS$Day==1 & VAS$Condition=='HCL' & VAS$Session==2]- VAS$VASf[VAS$Day==1 & VAS$Condition=='HCL' & VAS$Session==1]
+ACC<- EXP$Acc[EXP$Day==1 & EXP$Condition=='HCL' & EXP$Time==2]- EXP$Acc[EXP$Day==1 & EXP$Condition=='HCL' & EXP$Time==1]
+A<- corrplot(VAS_f, ACC, 'delta Subjective CF', 'delta Performance') +ggtitle('Day 1, HCL') 
+ 
+ #HCL, Day 2 
+ VAS_f <- VAS$VASf[VAS$Day==2 & VAS$Condition=='HCL' & VAS$Session==2]- VAS$VASf[VAS$Day==2 & VAS$Condition=='HCL' & VAS$Session==1]
+ACC<- EXP$Acc[EXP$Day==2 & EXP$Condition=='HCL' & EXP$Time==2]- EXP$Acc[EXP$Day==2 & EXP$Condition=='HCL' & EXP$Time==1]
+B<- corrplot(VAS_f, ACC, 'delta Subjective CF', 'delta Performance') +ggtitle('Day 2, HCL') 
+ 
+ #LCL, Day 1
+VAS_f <- VAS$VASf[VAS$Day==1 & VAS$Condition=='LCL' & VAS$Session==2]- VAS$VASf[VAS$Day==1 & VAS$Condition=='LCL' & VAS$Session==1]
+ACC<- EXP$Acc[EXP$Day==1 & EXP$Condition=='LCL' & EXP$Time==2]- EXP$Acc[EXP$Day==1 & EXP$Condition=='LCL' & EXP$Time==1]
+C<- corrplot(VAS_f, ACC, 'delta Subjective CF', 'delta Performance') +ggtitle('Day 1, LCL') 
+ 
+ #LCL, Day 2
+ VAS_f <- VAS$VASf[VAS$Day==2 & VAS$Condition=='LCL' & VAS$Session==2]- VAS$VASf[VAS$Day==2 & VAS$Condition=='LCL' & VAS$Session==1]
+ACC<- EXP$Acc[EXP$Day==2 & EXP$Condition=='LCL' & EXP$Time==2]- EXP$Acc[EXP$Day==2 & EXP$Condition=='LCL' & EXP$Time==1]
+D<- corrplot(VAS_f, ACC, 'delta Subjective CF', 'delta Performance') +ggtitle('Day 2, LCL') 
+ 
+DELTACORR <- ggarrange(A, B, C, D + rremove("x.text"),
+           labels = c("A", "B", "C", "D"),
+           ncol = 2, nrow = 2)
+ plggsave(DELTACORR, file=paste0(plotPrefix, "DELTACORR.jpg"), width = 2500, height = 1500, dpi = 300, units = "px")
+ DELTACORR
+ 
+ 
+ #HCL, Time 1
+VAS_f <- VAS$VASf[VAS$Day==1 & VAS$Condition=='HCL' & VAS$Time==2]- VAS$VASf[VAS$Day==1 & VAS$Condition=='HCL' & VAS$Time==1]
+ACC<- df$Acc[df$Time==1 & df$Condition =='HCL']
+A<- corrplot(VAS_f, ACC, 'delta VAS-f', 'T1 Performance') +ggtitle('Time 1, HCL') 
+ 
+ #HCL, Time 2
+ VAS_f <- VAS$VASf[VAS$Day==1 & VAS$Condition=='HCL' & VAS$Time==2]- VAS$VASf[VAS$Day==1 & VAS$Condition=='HCL' & VAS$Time==1]
+ACC<- df$Acc[df$Time==2 & df$Condition =='HCL']
+B<- corrplot(VAS_f, ACC, 'delta VAS-f', 'T2 Performance') +ggtitle('Time 2, HCL') 
+ 
+ #LCL, Time 1
+VAS_f <- VAS$VASf[VAS$Day==1 & VAS$Condition=='LCL' & VAS$Time==2]- VAS$VASf[VAS$Day==1 & VAS$Condition=='LCL' & VAS$Time==1]
+ACC<- df$Acc[df$Time==1 & df$Condition =='LCL']
+C<- corrplot(VAS_f, ACC, 'delta VAS-f', 'T1 Performance') +ggtitle('Time 1, LCL') 
+ 
+ #LCL, Time 2
+ VAS_f <- VAS$VASf[VAS$Day==1 & VAS$Condition=='LCL' & VAS$Time==2]- VAS$VASf[VAS$Day==1 & VAS$Condition=='LCL' & VAS$Time==1]
+ACC<- df$Acc[df$Time==1 & df$Condition =='LCL']
+D<- corrplot(VAS_f, ACC, 'delta VAS-f', 'T2 Performance') +ggtitle('Time 1, LCL') 
+ 
+DELTACORR <- ggarrange(A, B, C, D + rremove("x.text"),
+           labels = c("A", "B", "C", "D"),
+           ncol = 2, nrow = 2)
+ ggsave(DELTACORR, file=paste0(plotPrefix, "DELTACORR.jpg"), width = 2500, height = 1500, dpi = 300, units = "px")
+ DELTACORR
  
 ```
 

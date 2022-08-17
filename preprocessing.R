@@ -240,7 +240,7 @@ write.csv(combined,"combined.csv",row.names=FALSE)
 ### filtering
 
 #re-download
-data <- read.csv(paste0(Dir, "combined_EXP.csv"), header = TRUE, sep = )
+data <- read.csv(paste0(Dir, "combined.csv"), header = TRUE, sep = )
 
 #remove row with no participant private ID
 data <- subset(data, !is.na(Participant.Private.ID))
@@ -301,10 +301,10 @@ data<-data[!(data$Trial.Type=="instructions"|data$Trial.Type=="fullscreen"),]
 data$RT [is.na(data$RT)] <- 0
 
 #Drop unnecessary columns
-EXP = subset(data, select = -c(ï..Event.Index, UTC.Timestamp, UTC.Date, Local.Timestamp, Local.Timezone, Experiment.ID, Experiment.Version,
+EXP = subset(data, select = -c(Event.Index, UTC.Timestamp, UTC.Date, Local.Timestamp, Local.Timezone, Experiment.ID, Experiment.Version,
                                         Tree.Node.Key, Repeat.Key, Schedule.ID, Participant.Public.ID, Task.Version, Key.Press, Test.Part,
                                         Participant.Starting.Group, Participant.Status, Participant.Completion.Code, Participant.External.Session.ID,
-                                        Checkpoint, checkpoint.yiku, checkpoint.gn26, Trial.Type, Internal.Node.ID, correct_resp, trial_duration, Correct.Response,
+                                        Checkpoint, checkpoint.yiku, checkpoint.gn26, Trial.Type, Internal.Node.ID, correct_resp, Correct.Response,
                                 response, X.1, X.2, X, accuracy_percentage, Participant.Device.Type, Participant.Device, Participant.OS, Participant.Browser,
                                Participant.Viewport.Size, Participant.Monitor.Size, accuracy_pic_trial, match, phase, correct_response, Correct, Stimulus,
                                accuracy_color_trial, minutes, trial_dur, Reaction.Time) )
@@ -398,10 +398,10 @@ data$Condition[data$Accuracy_Level=="Accuracy_level_1"] = 'LCL' # Low Cognitive 
 data$Condition[data$Accuracy_Level=="Accuracy_level_0.55"] = 'HCL'
 
 #Drop unnecessary columns
-AGES = subset(data, select = -c(ï..Event.Index, UTC.Timestamp, UTC.Date, Local.Timestamp, Local.Timezone, Experiment.ID, Experiment.Version, Task.Version,
+AGES = subset(data, select = -c(Event.Index, UTC.Timestamp, UTC.Date, Local.Timestamp, Local.Timezone, Experiment.ID, Experiment.Version, Task.Version,
                                 Tree.Node.Key, Repeat.Key, Schedule.ID, Participant.Public.ID,
                                 Participant.Starting.Group, Participant.Status, Participant.Completion.Code, Participant.External.Session.ID,
-                                Checkpoint, checkpoint.yiku, checkpoint.gn26, Accuracy_Level, Question.Key, Randomise.questionnaire.elements.) )
+                                Checkpoint, checkpoint.yiku, checkpoint.gn26, Accuracy_Level) )
 
 AGES = subset(AGES, select = -c(Participant.Private.ID, Task.Name, Participant.Device.Type, Participant.Device, Participant.OS, Participant.Browser, Participant.Monitor.Size, Participant.Viewport.Size, Local.Date) )
 
